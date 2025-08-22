@@ -1,0 +1,41 @@
+{
+  "name": "israel-drugs-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for Israeli Ministry of Health Drugs Database - AI-optimized medical information assistant",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "israel-drugs-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "watch": "tsc --watch",
+    "dev": "npm run build && node dist/index.js",
+    "start": "node dist/index.js",
+    "test": "echo \"Tests will be added later\" && exit 0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "israel",
+    "drugs",
+    "medicine",
+    "healthcare",
+    "api",
+    "ai-assistant"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.3",
+    "zod": "^3.22.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
