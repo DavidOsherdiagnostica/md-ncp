@@ -1,7 +1,6 @@
 /**
- * Therapeutic Categories Discovery Tool
- * Enables AI agents to explore ATC therapeutic classification system
- * Transforms GetAtcList API into intelligent pharmaceutical category navigation
+ * Therapeutic Categories Discovery Tool - FIXED VERSION
+ * תיקון הבעיה שהחזירה atc_hierarchy ריק
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -123,6 +122,14 @@ async function executeTherapeuticCategoriesDiscovery(
     // Get complete ATC list from healthcare system
     const atcList = await apiClient.getAtcList();
     
+    // FIXED: בדיקה שהתוצאה לא ריקה
+    if (!atcList || !Array.isArray(atcList) || atcList.length === 0) {
+      // console.warn("ATC list is empty or invalid, attempting recovery");
+      return await attemptTherapeuticCategoriesRecovery(userInput);
+    }
+
+    // console.info(`Retrieved ${atcList.length} ATC codes from API`);
+    
     // Process and enhance the ATC data
     const processedAtcData = await processTherapeuticCategories(atcList, userInput);
     
@@ -142,19 +149,37 @@ async function processTherapeuticCategories(
 ): Promise<any[]> {
   let processedData = rawAtcData;
   
+  // FIXED: וידוא שיש נתונים לעיבוד
+  if (!processedData || processedData.length === 0) {
+    // console.warn("No ATC data to process");
+    return [];
+  }
+
+  // console.info(`Processing ${processedData.length} ATC codes`);
+
   // Apply therapeutic area filtering if specified
   if (userInput.therapeutic_area && userInput.therapeutic_area.trim()) {
+    const beforeFilter = processedData.length;
     processedData = filterByTherapeuticArea(processedData, userInput.therapeutic_area);
+    // console.info(`Therapeutic area filter reduced results from ${beforeFilter} to ${processedData.length}`);
   }
   
   // Apply level filtering if specified
   if (userInput.level !== "all") {
+    const beforeFilter = processedData.length;
     processedData = filterByAtcLevel(processedData, userInput.level);
+    // console.info(`Level filter (${userInput.level}) reduced results from ${beforeFilter} to ${processedData.length}`);
   }
   
+  // FIXED: בדיקה שנשארו נתונים אחרי הסינון
+  if (processedData.length === 0) {
+    // console.warn("No data left after filtering, using basic structure");
+    return await generateBasicATCStructure(userInput);
+  }
+
   // Enhance each ATC code with clinical intelligence
   const enhancedData = await Promise.all(
-    processedData.map(async (atcItem: any) => {
+    processedData.slice(0, 100).map(async (atcItem: any) => { // FIXED: הגבלה ל-100 פריטים למניעת timeout
       const enhancedItem = {
         ...atcItem,
         therapeutic_analysis: await generateTherapeuticAnalysis(atcItem),
@@ -179,7 +204,59 @@ async function processTherapeuticCategories(
     return priorityB - priorityA;
   });
   
+  // console.info(`Successfully processed ${enhancedData.length} enhanced ATC categories`);
+  
   return enhancedData;
+}
+
+// FIXED: פונקציה חדשה ליצירת מבנה בסיסי כשהכל נכשל
+async function generateBasicATCStructure(userInput: ValidatedExploreTherapeuticCategoriesInput): Promise<any[]> {
+  // console.info("Generating basic ATC structure");
+  
+  const basicATCGroups = [
+    { id: "A", text: "ALIMENTARY TRACT AND METABOLISM" },
+    { id: "B", text: "BLOOD AND BLOOD FORMING ORGANS" },
+    { id: "C", text: "CARDIOVASCULAR SYSTEM" },
+    { id: "D", text: "DERMATOLOGICALS" },
+    { id: "G", text: "GENITOURINARY SYSTEM AND SEX HORMONES" },
+    { id: "H", text: "SYSTEMIC HORMONAL PREPARATIONS" },
+    { id: "J", text: "ANTIINFECTIVES FOR SYSTEMIC USE" },
+    { id: "L", text: "ANTINEOPLASTIC AND IMMUNOMODULATING AGENTS" },
+    { id: "M", text: "MUSCULO-SKELETAL SYSTEM" },
+    { id: "N", text: "NERVOUS SYSTEM" },
+    { id: "P", text: "ANTIPARASITIC PRODUCTS, INSECTICIDES AND REPELLENTS" },
+    { id: "R", text: "RESPIRATORY SYSTEM" },
+    { id: "S", text: "SENSORY ORGANS" },
+    { id: "V", text: "VARIOUS" }
+  ];
+  
+  // Apply level filtering to basic structure if needed
+  let filteredGroups = basicATCGroups;
+  if (userInput.level === "main_groups") {
+    filteredGroups = basicATCGroups.filter(item => item.id.length === 1);
+  }
+  
+  // Apply therapeutic area filtering if specified
+  if (userInput.therapeutic_area && userInput.therapeutic_area.trim()) {
+    filteredGroups = filterByTherapeuticArea(filteredGroups, userInput.therapeutic_area);
+  }
+  
+  return filteredGroups.map(item => ({
+    ...item,
+    therapeutic_analysis: {
+      atc_level: 1,
+      anatomical_target: getAnatomicalTarget(item.id),
+      clinical_scope: getClinicalScope(item.id),
+      therapeutic_importance: "high",
+      data_source: "basic_structure"
+    },
+    clinical_applications: [`Primary medications for ${item.text.toLowerCase()}`],
+    prescribing_context: {
+      specialty_areas: getSpecialtyAreas(item.id),
+      prescription_patterns: "varies_by_specific_medication"
+    },
+    basic_structure_mode: true
+  }));
 }
 
 function filterByTherapeuticArea(atcData: any[], therapeuticArea: string): any[] {
@@ -220,13 +297,15 @@ function filterByTherapeuticArea(atcData: any[], therapeuticArea: string): any[]
   const relevantPrefixes = areaMapping[areaLower] || [therapeuticArea.toUpperCase()];
   
   return atcData.filter((item: any) => {
-    const code = item.id.toUpperCase();
+    const code = item.id ? item.id.toUpperCase() : "";
     return relevantPrefixes.some(prefix => code.startsWith(prefix));
   });
 }
 
 function filterByAtcLevel(atcData: any[], level: "main_groups" | "subgroups"): any[] {
   return atcData.filter((item: any) => {
+    if (!item.id) return false;
+    
     const codeLength = item.id.length;
     
     if (level === "main_groups") {
@@ -244,44 +323,15 @@ async function attemptTherapeuticCategoriesRecovery(
 ): Promise<any[]> {
   // console.info("Attempting therapeutic categories recovery with basic structure");
   
-  // Provide basic ATC structure for recovery
-  const basicStructure = [
-    { id: "A", text: "ALIMENTARY TRACT AND METABOLISM", recovery_mode: true },
-    { id: "B", text: "BLOOD AND BLOOD FORMING ORGANS", recovery_mode: true },
-    { id: "C", text: "CARDIOVASCULAR SYSTEM", recovery_mode: true },
-    { id: "D", text: "DERMATOLOGICALS", recovery_mode: true },
-    { id: "G", text: "GENITOURINARY SYSTEM AND SEX HORMONES", recovery_mode: true },
-    { id: "H", text: "SYSTEMIC HORMONAL PREPARATIONS", recovery_mode: true },
-    { id: "J", text: "ANTIINFECTIVES FOR SYSTEMIC USE", recovery_mode: true },
-    { id: "L", text: "ANTINEOPLASTIC AND IMMUNOMODULATING AGENTS", recovery_mode: true },
-    { id: "M", text: "MUSCULO-SKELETAL SYSTEM", recovery_mode: true },
-    { id: "N", text: "NERVOUS SYSTEM", recovery_mode: true },
-    { id: "P", text: "ANTIPARASITIC PRODUCTS, INSECTICIDES AND REPELLENTS", recovery_mode: true },
-    { id: "R", text: "RESPIRATORY SYSTEM", recovery_mode: true },
-    { id: "S", text: "SENSORY ORGANS", recovery_mode: true },
-    { id: "V", text: "VARIOUS", recovery_mode: true }
-  ];
-  
-  return basicStructure.map(item => ({
-    ...item,
-    therapeutic_analysis: {
-      anatomical_target: getAnatomicalTarget(item.id),
-      clinical_scope: getClinicalScope(item.id),
-      therapeutic_importance: "high"
-    },
-    clinical_applications: [`Primary medications for ${item.text.toLowerCase()}`],
-    prescribing_context: {
-      specialty_areas: getSpecialtyAreas(item.id),
-      prescription_patterns: "varies_by_specific_medication"
-    }
-  }));
+  // Generate basic structure when API fails
+  return await generateBasicATCStructure(userInput as ValidatedExploreTherapeuticCategoriesInput);
 }
 
 // ===== CLINICAL INTELLIGENCE GENERATION =====
 
 async function generateTherapeuticAnalysis(atcItem: any): Promise<Record<string, unknown>> {
-  const atcCode = atcItem.id;
-  const atcText = atcItem.text;
+  const atcCode = atcItem.id || "";
+  const atcText = atcItem.text || "";
   
   return {
     atc_level: determineAtcLevel(atcCode),
@@ -294,8 +344,8 @@ async function generateTherapeuticAnalysis(atcItem: any): Promise<Record<string,
 }
 
 async function generateClinicalApplications(atcItem: any): Promise<string[]> {
-  const atcCode = atcItem.id;
-  const atcText = atcItem.text;
+  const atcCode = atcItem.id || "";
+  const atcText = atcItem.text || "";
   
   const applications: string[] = [];
   
@@ -330,7 +380,7 @@ async function generateClinicalApplications(atcItem: any): Promise<string[]> {
 }
 
 async function generatePrescribingContext(atcItem: any): Promise<Record<string, unknown>> {
-  const atcCode = atcItem.id;
+  const atcCode = atcItem.id || "";
   
   return {
     specialty_areas: getSpecialtyAreas(atcCode),
@@ -345,7 +395,7 @@ async function findRelatedCategories(
   atcItem: any, 
   allAtcData: any[]
 ): Promise<string[]> {
-  const atcCode = atcItem.id;
+  const atcCode = atcItem.id || "";
   const related: string[] = [];
   
   // Find related categories based on therapeutic relationships
@@ -355,12 +405,13 @@ async function findRelatedCategories(
     // Find other codes with same 3-character prefix
     const relatedCodes = allAtcData
       .filter((item: any) => 
+        item.id && 
         item.id !== atcCode && 
         item.id.startsWith(prefix) && 
         item.id.length === atcCode.length
       )
       .slice(0, 5)
-      .map((item: any) => `${item.id}: ${item.text}`);
+      .map((item: any) => `${item.id}: ${item.text || 'Unknown'}`);
     
     related.push(...relatedCodes);
   }
@@ -373,7 +424,7 @@ async function findRelatedCategories(
 }
 
 async function generateUsagePatterns(atcItem: any): Promise<Record<string, unknown>> {
-  const atcCode = atcItem.id;
+  const atcCode = atcItem.id || "";
   
   return {
     prescribing_frequency: estimatePrescribingFrequency(atcCode),

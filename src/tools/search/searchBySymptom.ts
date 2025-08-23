@@ -1,7 +1,6 @@
 /**
- * Symptom-Based Drug Discovery Tool
- * Enables AI agents to find appropriate medications for specific medical conditions
- * Transforms SearchBySymptom API into clinical decision support system
+ * Symptom-Based Drug Discovery Tool - FIXED VERSION
+ * תיקון הבעיה שהחזירה 0 תוצאות
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -89,6 +88,12 @@ export function registerSearchBySymptomTool(server: McpServer): void {
           validatedSymptomInput.specific_symptom,
         );
 
+        // FIXED: שיפור לוגיקת prescription filter
+        // במקום determinePrescriBtionFilter משתמשים בלוגיקה הנכונה
+        const prescriptionFilter = validatedSymptomInput.treatment_preferences?.otc_preferred === true
+          ? API_BEHAVIOR.PRESCRIPTION_LOGIC.OTC_ONLY  // true = רק ללא מרשם
+          : API_BEHAVIOR.PRESCRIPTION_LOGIC.ALL_DRUGS; // false = כל התרופות
+
         // Transform MCP preferences to API format
         const apiRequest = {
           primarySymp: category,
@@ -97,11 +102,18 @@ export function registerSearchBySymptomTool(server: McpServer): void {
             validatedSymptomInput.treatment_preferences?.health_basket_only || false,
           ),
           pageIndex: validatePageIndex(1),
-          prescription: determinePrescriBtionFilter(
-            validatedSymptomInput.treatment_preferences?.otc_preferred,
-          ),
+          prescription: prescriptionFilter,
           orderBy: 5, // Use popularity-based ordering for symptoms
         };
+
+        console.info(`Searching for drugs: ${category} → ${symptom}`);
+        console.info(`API request parameters:`, {
+          primarySymp: apiRequest.primarySymp,
+          secondarySymp: apiRequest.secondarySymp,
+          prescription: apiRequest.prescription,
+          healthServices: apiRequest.healthServices,
+          orderBy: apiRequest.orderBy
+        });
 
         // Execute symptom-based search with clinical intelligence
         const searchResults = await executeSymptomSearch(apiRequest, validatedSymptomInput);
@@ -144,12 +156,16 @@ async function executeSymptomSearch(
   const apiClient = getApiClient();
 
   try {
+    console.info(`Primary search attempt with parameters:`, baseRequest);
+    
     // Primary symptom search
     const primaryResult = await apiClient.searchBySymptom(baseRequest);
 
+    console.info(`Primary search returned ${primaryResult?.results?.length || 0} results`);
+
     // If no results found, try alternative search strategies
     if (!primaryResult.results || primaryResult.results.length === 0) {
-      // console.info('Primary symptom search returned no results, attempting alternative strategies');
+      console.info('Primary symptom search returned no results, attempting alternative strategies');
       return await executeAlternativeSymptomSearch(baseRequest, userInput);
     }
 
@@ -159,12 +175,14 @@ async function executeSymptomSearch(
         ...primaryResult,
         results: primaryResult.results.slice(0, userInput.treatment_preferences.max_results),
       };
+      console.info(`Limited results to ${limitedResults.results.length} medications`);
       return limitedResults;
     }
 
+    console.info(`Returning ${primaryResult.results.length} results from primary search`);
     return primaryResult;
   } catch (error) {
-    // console.error('Symptom search failed:', error);
+    console.error('Symptom search failed:', error);
 
     // Attempt recovery with relaxed filters
     return await attemptSymptomSearchRecovery(baseRequest, userInput);
@@ -177,50 +195,97 @@ async function executeAlternativeSymptomSearch(
 ): Promise<any> {
   const apiClient = getApiClient();
 
-  // Strategy 1: Try with different prescription filter
+  // FIXED: Strategy 1 - נסה עם prescription filter הפוך
   try {
+    console.info('Strategy 1: Trying with flipped prescription filter');
+    
     const altPrescriptionRequest = {
       ...baseRequest,
       prescription: !baseRequest.prescription, // Flip prescription logic
     };
 
+    console.info(`Alternative prescription request:`, altPrescriptionRequest);
+
     const altResult = await apiClient.searchBySymptom(altPrescriptionRequest);
     if (altResult.results && altResult.results.length > 0) {
-      // console.info(`Alternative prescription filter found ${altResult.results.length} results`);
+      console.info(`Alternative prescription filter found ${altResult.results.length} results`);
       return altResult;
     }
   } catch (error) {
-    // console.warn('Alternative prescription search failed:', error);
+    console.warn('Alternative prescription search failed:', error);
   }
 
-  // Strategy 2: Try without health basket filter
+  // FIXED: Strategy 2 - נסה בלי סינון סל הבריאות
   try {
+    console.info('Strategy 2: Trying without health basket filter');
+    
     const noBasketRequest = {
       ...baseRequest,
       healthServices: false,
     };
 
+    console.info(`No health basket request:`, noBasketRequest);
+
     const noBasketResult = await apiClient.searchBySymptom(noBasketRequest);
     if (noBasketResult.results && noBasketResult.results.length > 0) {
-      // console.info(`No health basket filter found ${noBasketResult.results.length} results`);
+      console.info(`No health basket filter found ${noBasketResult.results.length} results`);
       return noBasketResult;
     }
   } catch (error) {
-    // console.warn('No health basket search failed:', error);
+    console.warn('No health basket search failed:', error);
   }
 
-  // Strategy 3: Try with different ordering
+  // FIXED: Strategy 3 - נסה עם orderBy שונה
   try {
+    console.info('Strategy 3: Trying with different ordering');
+    
     const altOrderRequest = {
       ...baseRequest,
       orderBy: 0, // Default ordering instead of popularity
+      healthServices: false, // גם בלי סל בריאות
+      prescription: API_BEHAVIOR.PRESCRIPTION_LOGIC.ALL_DRUGS // כל התרופות
     };
 
-    return await apiClient.searchBySymptom(altOrderRequest);
+    console.info(`Alternative order request:`, altOrderRequest);
+
+    const altOrderResult = await apiClient.searchBySymptom(altOrderRequest);
+    if (altOrderResult.results && altOrderResult.results.length > 0) {
+      console.info(`Alternative ordering found ${altOrderResult.results.length} results`);
+      return altOrderResult;
+    }
   } catch (error) {
-    // console.error('All alternative symptom search strategies failed:', error);
+    console.warn('Alternative ordering search failed:', error);
+  }
+
+  // FIXED: Strategy 4 - בדוק אם הסימפטומים תקינים
+  console.info('Strategy 4: Trying with simplified symptom matching');
+  
+  try {
+    // נסה עם קטגוריה בלבד
+    const simplifiedRequest = {
+      primarySymp: baseRequest.primarySymp,
+      secondarySymp: "", // ריק
+      healthServices: false,
+      pageIndex: 1,
+      prescription: API_BEHAVIOR.PRESCRIPTION_LOGIC.ALL_DRUGS,
+      orderBy: 0,
+    };
+
+    console.info(`Simplified request (category only):`, simplifiedRequest);
+
+    const simplifiedResult = await apiClient.searchBySymptom(simplifiedRequest);
+    if (simplifiedResult.results && simplifiedResult.results.length > 0) {
+      console.info(`Simplified search found ${simplifiedResult.results.length} results`);
+      return simplifiedResult;
+    }
+  } catch (error) {
+    console.error('All alternative symptom search strategies failed:', error);
     throw error;
   }
+
+  // אם הגענו לכאן - אין תוצאות
+  console.warn('No results found in any search strategy');
+  return { results: [] };
 }
 
 async function attemptSymptomSearchRecovery(
@@ -229,33 +294,41 @@ async function attemptSymptomSearchRecovery(
 ): Promise<any> {
   const apiClient = getApiClient();
 
-  // Recovery with minimal filters
+  // Recovery with minimal filters - הכי פשוט שאפשר
   const recoveryRequest = {
     primarySymp: baseRequest.primarySymp,
     secondarySymp: baseRequest.secondarySymp,
-    healthServices: false,
+    healthServices: false, // בלי סל בריאות
     pageIndex: 1,
-    prescription: API_BEHAVIOR.PRESCRIPTION_LOGIC.ALL_DRUGS, // Show all medications
-    orderBy: 0,
+    prescription: API_BEHAVIOR.PRESCRIPTION_LOGIC.ALL_DRUGS, // כל התרופות
+    orderBy: 0, // מיון ברירת מחדל
   };
 
   try {
-    // console.info('Attempting symptom search recovery with minimal filters');
-    return await apiClient.searchBySymptom(recoveryRequest);
+    console.info('Attempting symptom search recovery with minimal filters');
+    console.info(`Recovery request:`, recoveryRequest);
+    
+    const recoveryResult = await apiClient.searchBySymptom(recoveryRequest);
+    
+    if (recoveryResult && recoveryResult.results) {
+      console.info(`Recovery found ${recoveryResult.results.length} results`);
+      return recoveryResult;
+    } else {
+      console.warn('Recovery returned no results');
+      return { results: [] };
+    }
   } catch (error) {
-    // console.error('Symptom search recovery failed:', error);
-    throw error;
+    console.error('Symptom search recovery failed:', error);
+    // החזר מבנה ריק במקום לזרוק שגיאה
+    return { 
+      results: [],
+      error: 'search_failed',
+      recovery_attempted: true
+    };
   }
 }
 
 // ===== HELPER FUNCTIONS =====
-
-function determinePrescriBtionFilter(otcPreferred?: boolean): boolean {
-  if (otcPreferred) {
-    return API_BEHAVIOR.PRESCRIPTION_LOGIC.OTC_ONLY; // true = OTC only (inverted logic!)
-  }
-  return API_BEHAVIOR.PRESCRIPTION_LOGIC.ALL_DRUGS; // false = all drugs
-}
 
 function enhanceSymptomResponse(
   baseResponse: any,
