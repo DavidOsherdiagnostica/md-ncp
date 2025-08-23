@@ -3,10 +3,10 @@
  * Provides intelligent error recovery and clinical safety context
  */
 
-import { IsraelDrugsError, ErrorType, ErrorSeverity } from "../types/errors.js";
-import { McpErrorResponse } from "../types/mcp.js";
-import { createMcpErrorResponse } from "./formatters.js";
-import { ERROR_CONFIG } from "../config/constants.js";
+import { IsraelDrugsError, ErrorType, ErrorSeverity } from '../types/errors.js';
+import { McpErrorResponse } from '../types/mcp.js';
+import { createMcpErrorResponse } from './formatters.js';
+import { ERROR_CONFIG } from '../config/constants.js';
 
 // ===== ERROR CLASSIFICATION =====
 
@@ -27,13 +27,13 @@ export function classifyError(error: unknown, context?: string): IsraelDrugsErro
       {
         severity: ErrorSeverity.HIGH,
         suggestions: [
-          "Check internet connection",
-          "Verify Ministry of Health API is accessible",
-          "Try again in a few moments"
+          'Check internet connection',
+          'Verify Ministry of Health API is accessible',
+          'Try again in a few moments',
         ],
-        clinicalContext: "Unable to access medical database - patient safety may be compromised",
-        details: { originalError: String(error), context }
-      }
+        clinicalContext: 'Unable to access medical database - patient safety may be compromised',
+        details: { originalError: String(error), context },
+      },
     );
   }
 
@@ -45,19 +45,19 @@ export function classifyError(error: unknown, context?: string): IsraelDrugsErro
       {
         severity: ErrorSeverity.MEDIUM,
         suggestions: [
-          "Retry the request",
-          "Try with more specific search criteria",
-          "The medical database may be experiencing high load"
+          'Retry the request',
+          'Try with more specific search criteria',
+          'The medical database may be experiencing high load',
         ],
-        details: { originalError: error.message, context }
-      }
+        details: { originalError: error.message, context },
+      },
     );
   }
 
   // Handle HTTP response errors
   if (error instanceof Error && error.message.includes('HTTP')) {
     const statusMatch = error.message.match(/HTTP (\d+)/);
-    const statusCode = statusMatch ? parseInt(statusMatch[1]) : 0;
+    const statusCode = statusMatch ? parseInt(statusMatch[1]!) : 0; // Added non-null assertion
 
     if (statusCode === 429) {
       return new IsraelDrugsError(
@@ -66,12 +66,12 @@ export function classifyError(error: unknown, context?: string): IsraelDrugsErro
         {
           severity: ErrorSeverity.MEDIUM,
           suggestions: [
-            "Wait a moment before retrying",
-            "Reduce request frequency",
-            "Use cached data if available"
+            'Wait a moment before retrying',
+            'Reduce request frequency',
+            'Use cached data if available',
           ],
-          details: { statusCode, context }
-        }
+          details: { statusCode, context },
+        },
       );
     }
 
@@ -82,13 +82,13 @@ export function classifyError(error: unknown, context?: string): IsraelDrugsErro
         {
           severity: ErrorSeverity.HIGH,
           suggestions: [
-            "Try again later",
-            "The medical database may be under maintenance",
-            "Contact system administrator if problem persists"
+            'Try again later',
+            'The medical database may be under maintenance',
+            'Contact system administrator if problem persists',
           ],
-          clinicalContext: "Medical database temporarily unavailable",
-          details: { statusCode, context }
-        }
+          clinicalContext: 'Medical database temporarily unavailable',
+          details: { statusCode, context },
+        },
       );
     }
 
@@ -98,12 +98,12 @@ export function classifyError(error: unknown, context?: string): IsraelDrugsErro
       {
         severity: ErrorSeverity.MEDIUM,
         suggestions: [
-          "Verify request parameters",
-          "Check API documentation",
-          "Try a different approach"
+          'Verify request parameters',
+          'Check API documentation',
+          'Try a different approach',
         ],
-        details: { statusCode, context }
-      }
+        details: { statusCode, context },
+      },
     );
   }
 
@@ -115,31 +115,27 @@ export function classifyError(error: unknown, context?: string): IsraelDrugsErro
       {
         severity: ErrorSeverity.HIGH,
         suggestions: [
-          "The medical database returned invalid data",
-          "Try the request again",
-          "Report this issue if it persists"
+          'The medical database returned invalid data',
+          'Try the request again',
+          'Report this issue if it persists',
         ],
-        clinicalContext: "Data integrity issue with medical database",
-        details: { originalError: error.message, context }
-      }
+        clinicalContext: 'Data integrity issue with medical database',
+        details: { originalError: error.message, context },
+      },
     );
   }
 
   // Generic error fallback
   const errorMessage = error instanceof Error ? error.message : String(error);
-  return new IsraelDrugsError(
-    ErrorType.UNKNOWN_ERROR,
-    `Unexpected error: ${errorMessage}`,
-    {
-      severity: ErrorSeverity.MEDIUM,
-      suggestions: [
-        "Try the request again",
-        "Check input parameters",
-        "Contact support if problem persists"
-      ],
-      details: { originalError: errorMessage, context }
-    }
-  );
+  return new IsraelDrugsError(ErrorType.UNKNOWN_ERROR, `Unexpected error: ${errorMessage}`, {
+    severity: ErrorSeverity.MEDIUM,
+    suggestions: [
+      'Try the request again',
+      'Check input parameters',
+      'Contact support if problem persists',
+    ],
+    details: { originalError: errorMessage, context },
+  });
 }
 
 // ===== ERROR RECOVERY STRATEGIES =====
@@ -154,7 +150,7 @@ export function analyzeErrorRecovery(error: IsraelDrugsError): {
   retryDelay?: number;
 } {
   const isRecoverable = error.isRecoverable();
-  
+
   switch (error.type) {
     case ErrorType.API_TIMEOUT:
     case ErrorType.API_CONNECTION_ERROR:
@@ -162,11 +158,11 @@ export function analyzeErrorRecovery(error: IsraelDrugsError): {
         isRecoverable: true,
         recoveryStrategy: 'retry',
         suggestedActions: [
-          "Retry the request after a short delay",
-          "Check network connectivity",
-          "Verify API endpoint availability"
+          'Retry the request after a short delay',
+          'Check network connectivity',
+          'Verify API endpoint availability',
         ],
-        retryDelay: 2000
+        retryDelay: 2000,
       };
 
     case ErrorType.API_RATE_LIMIT:
@@ -174,11 +170,11 @@ export function analyzeErrorRecovery(error: IsraelDrugsError): {
         isRecoverable: true,
         recoveryStrategy: 'retry',
         suggestedActions: [
-          "Wait before retrying (rate limit exceeded)",
-          "Reduce request frequency",
-          "Implement request queuing"
+          'Wait before retrying (rate limit exceeded)',
+          'Reduce request frequency',
+          'Implement request queuing',
         ],
-        retryDelay: 5000
+        retryDelay: 5000,
       };
 
     case ErrorType.NO_RESULTS_FOUND:
@@ -187,10 +183,10 @@ export function analyzeErrorRecovery(error: IsraelDrugsError): {
         recoveryStrategy: 'alternative',
         suggestedActions: [
           "Try using 'suggest_drug_names' for spelling help",
-          "Search by symptom instead of drug name",
-          "Use broader search criteria",
-          "Check for typos in search terms"
-        ]
+          'Search by symptom instead of drug name',
+          'Use broader search criteria',
+          'Check for typos in search terms',
+        ],
       };
 
     case ErrorType.AMBIGUOUS_QUERY:
@@ -198,10 +194,10 @@ export function analyzeErrorRecovery(error: IsraelDrugsError): {
         isRecoverable: true,
         recoveryStrategy: 'user_action',
         suggestedActions: [
-          "Provide more specific search criteria",
-          "Use exact drug names from suggestions",
-          "Filter by administration route or therapeutic category"
-        ]
+          'Provide more specific search criteria',
+          'Use exact drug names from suggestions',
+          'Filter by administration route or therapeutic category',
+        ],
       };
 
     case ErrorType.INVALID_INPUT:
@@ -212,10 +208,10 @@ export function analyzeErrorRecovery(error: IsraelDrugsError): {
         isRecoverable: true,
         recoveryStrategy: 'user_action',
         suggestedActions: [
-          "Correct the input parameters",
-          "Use validation tools to check format",
-          "Refer to helper endpoints for valid values"
-        ]
+          'Correct the input parameters',
+          'Use validation tools to check format',
+          'Refer to helper endpoints for valid values',
+        ],
       };
 
     case ErrorType.DRUG_DISCONTINUED:
@@ -223,10 +219,10 @@ export function analyzeErrorRecovery(error: IsraelDrugsError): {
         isRecoverable: true,
         recoveryStrategy: 'alternative',
         suggestedActions: [
-          "Search for active alternatives",
+          'Search for active alternatives',
           "Use 'explore_generic_alternatives' with same active ingredient",
-          "Consult healthcare provider for replacement options"
-        ]
+          'Consult healthcare provider for replacement options',
+        ],
       };
 
     case ErrorType.PRESCRIPTION_REQUIRED:
@@ -234,10 +230,10 @@ export function analyzeErrorRecovery(error: IsraelDrugsError): {
         isRecoverable: true,
         recoveryStrategy: 'alternative',
         suggestedActions: [
-          "Search for over-the-counter alternatives",
-          "Filter search to show only OTC medications",
-          "Consult healthcare provider for prescription"
-        ]
+          'Search for over-the-counter alternatives',
+          'Filter search to show only OTC medications',
+          'Consult healthcare provider for prescription',
+        ],
       };
 
     case ErrorType.API_SERVER_ERROR:
@@ -246,11 +242,11 @@ export function analyzeErrorRecovery(error: IsraelDrugsError): {
         isRecoverable: false,
         recoveryStrategy: 'abort',
         suggestedActions: [
-          "Medical database is temporarily unavailable",
-          "Try again later",
-          "Use alternative information sources",
-          "Contact system administrator"
-        ]
+          'Medical database is temporarily unavailable',
+          'Try again later',
+          'Use alternative information sources',
+          'Contact system administrator',
+        ],
       };
 
     default:
@@ -258,10 +254,10 @@ export function analyzeErrorRecovery(error: IsraelDrugsError): {
         isRecoverable: false,
         recoveryStrategy: 'abort',
         suggestedActions: [
-          "Unknown error occurred",
-          "Try a different approach",
-          "Contact support with error details"
-        ]
+          'Unknown error occurred',
+          'Try a different approach',
+          'Contact support with error details',
+        ],
       };
   }
 }
@@ -284,7 +280,7 @@ export function handleClinicalSafetyError(error: IsraelDrugsError): {
           safetyLevel: 'high',
           clinicalAction: 'Immediately stop using discontinued medication',
           patientGuidance: 'Contact your healthcare provider for alternative treatment',
-          providerNotification: true
+          providerNotification: true,
         };
 
       case ErrorType.SAFETY_WARNING:
@@ -292,7 +288,7 @@ export function handleClinicalSafetyError(error: IsraelDrugsError): {
           safetyLevel: 'critical',
           clinicalAction: 'Review safety warnings before proceeding',
           patientGuidance: 'Do not use this medication without medical supervision',
-          providerNotification: true
+          providerNotification: true,
         };
 
       case ErrorType.PRESCRIPTION_REQUIRED:
@@ -300,7 +296,7 @@ export function handleClinicalSafetyError(error: IsraelDrugsError): {
           safetyLevel: 'medium',
           clinicalAction: 'Medical evaluation required for this medication',
           patientGuidance: 'Schedule appointment with healthcare provider',
-          providerNotification: false
+          providerNotification: false,
         };
 
       default:
@@ -308,7 +304,7 @@ export function handleClinicalSafetyError(error: IsraelDrugsError): {
           safetyLevel: 'medium',
           clinicalAction: 'Exercise caution due to incomplete information',
           patientGuidance: 'Verify medication information with healthcare provider',
-          providerNotification: false
+          providerNotification: false,
         };
     }
   }
@@ -317,7 +313,7 @@ export function handleClinicalSafetyError(error: IsraelDrugsError): {
     safetyLevel: 'low',
     clinicalAction: 'Standard information validation recommended',
     patientGuidance: 'Use medication information as general reference only',
-    providerNotification: false
+    providerNotification: false,
   };
 }
 
@@ -330,10 +326,10 @@ export function enhanceErrorContext(
   error: IsraelDrugsError,
   operationContext: {
     toolName?: string;
-    userInput?: Record<string, unknown>;
+    userInput?: unknown; // Changed from Record<string, unknown>
     attemptNumber?: number;
     previousErrors?: string[];
-  }
+  },
 ): IsraelDrugsError {
   const enhancedSuggestions = [...(error.suggestions || [])];
   const enhancedDetails = { ...error.details, ...operationContext };
@@ -344,21 +340,21 @@ export function enhanceErrorContext(
       case 'discover_drug_by_name':
         enhancedSuggestions.push(
           "Try 'suggest_drug_names' tool for spelling assistance",
-          "Consider searching by symptom instead"
+          'Consider searching by symptom instead',
         );
         break;
-      
+
       case 'find_drugs_for_symptom':
         enhancedSuggestions.push(
           "Use 'browse_available_symptoms' to see valid symptom categories",
-          "Check symptom spelling and category matching"
+          'Check symptom spelling and category matching',
         );
         break;
-      
+
       case 'explore_generic_alternatives':
         enhancedSuggestions.push(
-          "Verify ATC code format (4 characters only)",
-          "Use 'explore_therapeutic_categories' for valid ATC codes"
+          'Verify ATC code format (4 characters only)',
+          "Use 'explore_therapeutic_categories' for valid ATC codes",
         );
         break;
     }
@@ -368,29 +364,25 @@ export function enhanceErrorContext(
   if (operationContext.attemptNumber && operationContext.attemptNumber > 1) {
     enhancedSuggestions.push(
       `This is attempt ${operationContext.attemptNumber} - consider alternative approach`,
-      "Multiple failures may indicate systematic issue"
+      'Multiple failures may indicate systematic issue',
     );
   }
 
   // Add pattern-based suggestions from previous errors
   if (operationContext.previousErrors && operationContext.previousErrors.length > 0) {
     enhancedSuggestions.push(
-      "Previous errors suggest possible input format issues",
-      "Consider using helper tools to validate input parameters"
+      'Previous errors suggest possible input format issues',
+      'Consider using helper tools to validate input parameters',
     );
   }
 
-  return new IsraelDrugsError(
-    error.type,
-    error.message,
-    {
-      severity: error.severity,
-      suggestions: enhancedSuggestions,
-      clinicalContext: error.clinicalContext,
-      details: enhancedDetails,
-      correlationId: error.correlationId
-    }
-  );
+  return new IsraelDrugsError(error.type, error.message, {
+    severity: error.severity,
+    suggestions: enhancedSuggestions,
+    ...(error.clinicalContext && { clinicalContext: error.clinicalContext }), // Conditionally add clinicalContext
+    details: enhancedDetails,
+    ...(error.correlationId && { correlationId: error.correlationId }),
+  });
 }
 
 // ===== ERROR RESPONSE FORMATTING =====
@@ -403,18 +395,16 @@ export function createComprehensiveErrorResponse(
   partialData?: unknown,
   operationContext?: {
     toolName?: string;
-    userInput?: Record<string, unknown>;
+    userInput?: unknown; // Changed from Record<string, unknown>
     attemptNumber?: number;
-  }
+  },
 ): McpErrorResponse {
   // Enhance error with context
-  const enhancedError = operationContext 
-    ? enhanceErrorContext(error, operationContext)
-    : error;
+  const enhancedError = operationContext ? enhanceErrorContext(error, operationContext) : error;
 
   // Analyze recovery options
   const recoveryAnalysis = analyzeErrorRecovery(enhancedError);
-  
+
   // Get clinical safety information
   const safetyInfo = handleClinicalSafetyError(enhancedError);
 
@@ -430,15 +420,15 @@ export function createComprehensiveErrorResponse(
         level: safetyInfo.safetyLevel,
         action_required: safetyInfo.clinicalAction,
         patient_guidance: safetyInfo.patientGuidance,
-        provider_notification: safetyInfo.providerNotification
+        provider_notification: safetyInfo.providerNotification,
       },
       recovery_info: {
         is_recoverable: recoveryAnalysis.isRecoverable,
         strategy: recoveryAnalysis.recoveryStrategy,
-        retry_delay_ms: recoveryAnalysis.retryDelay || 0
-      }
+        retry_delay_ms: recoveryAnalysis.retryDelay || 0,
+      },
     },
-    recovery_actions: recoveryAnalysis.suggestedActions
+    recovery_actions: recoveryAnalysis.suggestedActions,
   };
 }
 
@@ -456,21 +446,21 @@ export function logError(error: IsraelDrugsError, context?: string): void {
     timestamp: error.timestamp.toISOString(),
     context,
     details: error.details,
-    correlationId: error.correlationId
+    correlationId: error.correlationId,
   };
 
   switch (logLevel) {
     case 'error':
-      console.error(logMessage, logData);
+      // console.error(logMessage, logData);
       break;
     case 'warn':
-      console.warn(logMessage, logData);
+      // console.warn(logMessage, logData);
       break;
     case 'info':
-      console.info(logMessage, logData);
+      // console.info(logMessage, logData);
       break;
     default:
-      console.log(logMessage, logData);
+      // console.log(logMessage, logData);
   }
 }
 
@@ -507,14 +497,14 @@ export function shouldAlert(error: IsraelDrugsError): boolean {
  */
 export function createUserFriendlyMessage(error: IsraelDrugsError): string {
   const baseMessage = error.message;
-  
+
   if (error.isClinicalSafetyConcern()) {
     return `MEDICAL SAFETY ALERT: ${baseMessage}. Please consult healthcare professionals.`;
   }
-  
+
   if (error.isRecoverable()) {
     return `RECOVERABLE ERROR: ${baseMessage}. This can be resolved with the suggested actions.`;
   }
-  
+
   return `ERROR: ${baseMessage}. Please try an alternative approach.`;
 }

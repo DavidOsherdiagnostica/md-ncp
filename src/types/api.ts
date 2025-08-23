@@ -15,9 +15,10 @@ export interface ApiResponse<T> {
 // ===== AUTOCOMPLETE TYPES =====
 
 export interface AutocompleteRequest {
+  [key: string]: unknown; // Added index signature
   val: string;
-  isSearchTradeName: "0" | "1";
-  isSearchTradeMarkiv: "0" | "1";
+  isSearchTradeName: '0' | '1';
+  isSearchTradeMarkiv: '0' | '1';
 }
 
 export interface AutocompleteResponse {
@@ -27,16 +28,17 @@ export interface AutocompleteResponse {
 // ===== SEARCH BY NAME TYPES =====
 
 export interface SearchByNameRequest {
+  [key: string]: unknown; // Added index signature
   val: string;
-  prescription: boolean;  // Note: Logic is inverted! false = all drugs, true = OTC only
-  healthServices: boolean;  // true = health basket only
-  pageIndex: number;  // Starts from 1, not 0!
+  prescription: boolean; // Note: Logic is inverted! false = all drugs, true = OTC only
+  healthServices: boolean; // true = health basket only
+  pageIndex: number; // Starts from 1, not 0!
   orderBy: number;
 }
 
 export interface DrugSearchResult {
   dbVersiob: string;
-  dragRegNum: string;  // Primary key for drug identification
+  dragRegNum: string; // Primary key for drug identification
   dragRegDate: string;
   dragHebName: string;
   dragEnName: string;
@@ -58,7 +60,7 @@ export interface DrugSearchResult {
   images: Array<{
     url: string;
   }>;
-  health: boolean;  // In health basket
+  health: boolean; // In health basket
   route: string;
   pages: number;
   results: number;
@@ -77,43 +79,46 @@ export interface SearchByNameResponse {
 // ===== SEARCH BY SYMPTOM TYPES =====
 
 export interface SearchBySymptomRequest {
+  [key: string]: unknown; // Added index signature
   primarySymp: string;
   secondarySymp: string;
   healthServices: boolean;
   pageIndex: number;
-  prescription: boolean;  // Same inverted logic as SearchByName
+  prescription: boolean; // Same inverted logic as SearchByName
   orderBy: number;
 }
 
 export interface SearchBySymptomResponse {
   hasNonSubsDrugs: boolean | null;
-  results: DrugSearchResult[];  // Same structure as SearchByName
+  results: DrugSearchResult[]; // Same structure as SearchByName
 }
 
 // ===== SEARCH GENERIC TYPES =====
 
 export interface SearchGenericRequest {
-  val: string;  // Active ingredient or empty
-  matanId: number | null;  // Administration route ID
-  packageId: number | null;  // Package type ID
-  atcId: string | null;  // ATC code (level 4 only!)
+  [key: string]: unknown; // Added index signature
+  val: string; // Active ingredient or empty
+  matanId: number | null; // Administration route ID
+  packageId: number | null; // Package type ID
+  atcId: string | null; // ATC code (level 4 only!)
   pageIndex: number;
   orderBy: number;
 }
 
-export type SearchGenericResponse = DrugSearchResult[];  // Array directly, not wrapped
+export type SearchGenericResponse = DrugSearchResult[]; // Array directly, not wrapped
 
 // ===== SPECIFIC DRUG TYPES =====
 
 export interface GetSpecificDrugRequest {
+  [key: string]: unknown; // Added index signature
   dragRegNum: string;
 }
 
 export interface DrugBrochure {
-  lng: "עברית" | "אנגלית" | "ערבית" | "רוסית" | null;
+  lng: 'עברית' | 'אנגלית' | 'ערבית' | 'רוסית' | null;
   url: string;
   updateDate: number;
-  type: "החמרה לעלון" | "עלון לצרכן" | "עלון לרופא";
+  type: 'החמרה לעלון' | 'עלון לצרכן' | 'עלון לרופא';
   display: string;
   updateDateFormat: string;
   creationDateFormat: string;
@@ -136,9 +141,9 @@ export interface DrugManufacturer {
 }
 
 export interface DrugAtcCode {
-  atc4Code: string;  // May contain trailing spaces!
+  atc4Code: string; // May contain trailing spaces!
   atc4Name: string;
-  atc5Code: string;  // No trailing spaces
+  atc5Code: string; // No trailing spaces
   atc5Name: string;
 }
 
@@ -147,8 +152,8 @@ export interface DrugPackage {
   packageUpdate: number;
   packageDesc: string;
   packMaterialDesc: string;
-  unitPrice: number;  // Number, not string like in search results
-  packageMaxPrice: number;  // Number, not string
+  unitPrice: number; // Number, not string like in search results
+  packageMaxPrice: number; // Number, not string
   quantity: string;
   shelfLife: string;
   unit: string;
@@ -173,14 +178,14 @@ export interface GetSpecificDrugResponse {
   dosageForm: string;
   dosageFormEng: string;
   dragIndication: string;
-  maxPrice: number;  // Number, not string
+  maxPrice: number; // Number, not string
   health: boolean;
-  activeMetirals: DrugActiveIngredient[];  // Note: "activeMetirals" not "activeComponents"
+  activeMetirals: DrugActiveIngredient[]; // Note: "activeMetirals" not "activeComponents"
   regOwnerName: string;
   regManufactureName: string;
-  regDate: number;  // Timestamp
-  regExpDate: number;  // Timestamp
-  applicationDate: number;  // Timestamp
+  regDate: number; // Timestamp
+  regExpDate: number; // Timestamp
+  applicationDate: number; // Timestamp
   custom: string;
   manufacturers: DrugManufacturer[];
   limitations: string;
@@ -195,17 +200,18 @@ export interface GetSpecificDrugResponse {
   salList: unknown[];
   atc: DrugAtcCode[];
   packages: DrugPackage[];
-  videos: unknown[];  // Always empty according to research
+  videos: unknown[]; // Always empty according to research
 }
 
 // ===== SYMPTOM TYPES =====
 
 export interface GetBySymptomRequest {
+  [key: string]: unknown; // Added index signature
   prescription: boolean;
 }
 
 export interface SymptomItem {
-  bySymptomSecond: number;  // Unique ID
+  bySymptomSecond: number; // Unique ID
   bySymptomName: string;
 }
 
@@ -217,6 +223,7 @@ export interface SymptomCategory {
 export type GetBySymptomResponse = SymptomCategory[];
 
 export interface GetFastSearchPopularSymptomsRequest {
+  [key: string]: unknown; // Added index signature
   rowCount: number;
 }
 
@@ -224,7 +231,7 @@ export interface PopularSymptom {
   bySymptomMain: string;
   bySymptomSecond: number;
   bySymptomName: string;
-  order: number;  // Popularity/search count
+  order: number; // Popularity/search count
 }
 
 export type GetFastSearchPopularSymptomsResponse = PopularSymptom[];
@@ -232,22 +239,22 @@ export type GetFastSearchPopularSymptomsResponse = PopularSymptom[];
 // ===== HELPER LIST TYPES =====
 
 export interface AtcListItem {
-  id: string;  // ATC code
-  text: string;  // Description in English
+  id: string; // ATC code
+  text: string; // Description in English
 }
 
 export type GetAtcListResponse = AtcListItem[];
 
 export interface PackageListItem {
-  id: number;  // Package type ID
-  text: string;  // Package description
+  id: number; // Package type ID
+  text: string; // Package description
 }
 
 export type GetPackageListResponse = PackageListItem[];
 
 export interface MatanListItem {
-  id: number;  // Administration route ID
-  text: string;  // Description in Hebrew
+  id: number; // Administration route ID
+  text: string; // Description in Hebrew
 }
 
 export type GetMatanListResponse = MatanListItem[];

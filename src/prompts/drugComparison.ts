@@ -5,10 +5,24 @@
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { CompareTherapeuticOptionsSchema, CompareTherapeuticOptionsInput } from "../types/mcp.js";
-import { getApiClient } from "../services/israelDrugsApi.js";
-import { validateToolInput } from "../utils/validators.js";
-import { classifyError, createComprehensiveErrorResponse } from "../utils/errorHandler.js";
+import { z } from "zod";
+
+// MCP Prompts can only use string parameters - this is a limitation of the protocol
+const drugComparisonArgsSchema = {
+  drug_list: z.string().describe("Comma-separated list of medications to compare (e.g., 'Paracetamol,Ibuprofen,Aspirin')"),
+  clinical_context: z.string().optional().describe("Clinical context or indication (e.g., 'pain management', 'cardiovascular protection')"),
+  target_population: z.string().optional().describe("Target patient population (e.g., 'elderly patients', 'pediatric population')"),
+  comparison_focus: z.string().optional().describe("Primary focus of comparison (e.g., 'safety', 'efficacy', 'cost-effectiveness')"),
+  decision_framework: z.string().optional().describe("Decision-making framework to use (e.g., 'evidence-based', 'cost-conscious')")
+};
+
+type DrugComparisonArgs = {
+  drug_list: string;
+  clinical_context?: string | undefined;
+  target_population?: string | undefined;
+  comparison_focus?: string | undefined;
+  decision_framework?: string | undefined;
+};
 
 // ===== PROMPT REGISTRATION =====
 
@@ -19,6 +33,13 @@ export function registerDrugComparisonPrompt(server: McpServer): void {
       title: "Comprehensive Drug Comparison Analysis",
       description: `Advanced pharmaceutical comparison framework that enables systematic evaluation of multiple medications across clinical, economic, and safety dimensions. Essential for evidence-based therapeutic decision-making and formulary management.
 
+**Usage:**
+- drug_list: Comma-separated list of medications (required)
+- clinical_context: Clinical indication or context (optional)
+- target_population: Specific patient population (optional)
+- comparison_focus: Primary comparison criteria (optional)
+- decision_framework: Decision-making approach (optional)
+
 **Clinical Applications:**
 - Therapeutic alternative evaluation for formulary decisions
 - Cost-effectiveness analysis for health system optimization
@@ -26,47 +47,33 @@ export function registerDrugComparisonPrompt(server: McpServer): void {
 - Generic vs brand medication assessment
 - Treatment pathway optimization
 
-**Comparison Dimensions:**
-- Clinical efficacy and therapeutic equivalence
-- Safety profiles and contraindication analysis
-- Economic impact and cost-effectiveness
-- Patient acceptability and compliance factors
-- Health system integration considerations
-
-**Evidence-Based Framework:**
-- Regulatory approval status and clinical trial data
-- Real-world effectiveness and safety surveillance
-- Health technology assessment outcomes
-- Professional guideline recommendations
-- Patient-reported outcome measures
-
-**Stakeholder Perspectives:**
-- Healthcare provider clinical decision support
-- Health system formulary and procurement guidance
-- Patient education and shared decision-making
-- Regulatory compliance and safety monitoring
+**Example Usage:**
+drug_list: "Paracetamol,Ibuprofen,Diclofenac"
+clinical_context: "Acute pain management"
+target_population: "Elderly patients with comorbidities"
+comparison_focus: "Safety and efficacy"
 
 This prompt generates comprehensive comparison reports that integrate clinical evidence, economic analysis, and practical implementation considerations for optimal therapeutic decision-making.`,
-      inputSchema: CompareTherapeuticOptionsSchema
+      argsSchema: drugComparisonArgsSchema
     },
-    async (input: CompareTherapeuticOptionsInput) => {
+    async (args, extra) => {
       try {
-        // Validate input parameters
-        const { data: validatedInput } = validateToolInput(
-          CompareTherapeuticOptionsSchema,
-          input,
-          "compare_therapeutic_options"
-        );
-
-        // Generate comprehensive comparison prompt
-        return generateDrugComparisonPrompt(validatedInput);
-
+        const promptContent = generateDrugComparisonPrompt(args);
+        
+        return {
+          messages: [
+            {
+              role: "user" as const,
+              content: {
+                type: "text" as const,
+                text: promptContent
+              }
+            }
+          ]
+        };
       } catch (error) {
-        const classifiedError = classifyError(error, "compare_therapeutic_options");
-        return createComprehensiveErrorResponse(classifiedError, undefined, {
-          promptName: "compare_therapeutic_options",
-          userInput: input
-        });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        throw new Error(`Failed to generate comparison prompt: ${errorMessage}`);
       }
     }
   );
@@ -74,31 +81,39 @@ This prompt generates comprehensive comparison reports that integrate clinical e
 
 // ===== PROMPT GENERATION =====
 
-function generateDrugComparisonPrompt(input: CompareTherapeuticOptionsInput): string {
+function generateDrugComparisonPrompt(input: DrugComparisonArgs): string {
   const {
     drug_list,
-    comparison_criteria,
     clinical_context,
     target_population,
+    comparison_focus,
     decision_framework
   } = input;
+
+  // Parse comma-separated drug list
+  const drugArray = drug_list.split(',').map(drug => drug.trim()).filter(drug => drug.length > 0);
+  
+  if (drugArray.length < 2) {
+    throw new Error('At least 2 medications are required for comparison');
+  }
 
   let prompt = `# Comprehensive Therapeutic Options Comparison
 
 ## Comparison Overview
-**Medications Under Review:** ${drug_list.join(", ")}
+**Medications Under Review:** ${drugArray.join(", ")}
 **Clinical Context:** ${clinical_context || "General therapeutic evaluation"}
 **Target Population:** ${target_population || "Adult population"}
+**Comparison Focus:** ${comparison_focus || "Comprehensive clinical comparison"}
 **Decision Framework:** ${decision_framework || "Evidence-based clinical decision-making"}
 
 ## Analysis Framework
 
 ### 1. Clinical Efficacy Assessment
-For each medication (${drug_list.join(", ")}), provide:
+For each medication (${drugArray.join(", ")}), provide:
 
 **Therapeutic Profile:**
 - Primary mechanism of action and pharmacological class
-- Clinical indications and approved uses
+- Clinical indications and approved uses in Israel
 - Evidence quality from clinical trials (Phase I-IV data)
 - Therapeutic equivalence classification
 - Onset of action and duration of effect
@@ -111,7 +126,7 @@ For each medication (${drug_list.join(", ")}), provide:
 - Patient-reported outcome measures
 
 **Clinical Evidence Quality:**
-- Regulatory approval pathway and timeline
+- Israeli Ministry of Health approval status
 - Clinical trial methodology and population studied
 - Post-marketing surveillance data
 - Systematic review and meta-analysis findings
@@ -129,7 +144,7 @@ For each medication (${drug_list.join(", ")}), provide:
 **Safety Monitoring Requirements:**
 - Laboratory monitoring needs and frequency
 - Clinical surveillance parameters
-- Risk evaluation and mitigation strategies (REMS)
+- Risk evaluation and mitigation strategies
 - Healthcare provider training requirements
 - Patient education and monitoring responsibilities
 
@@ -140,28 +155,28 @@ For each medication (${drug_list.join(", ")}), provide:
 - Long-term safety considerations
 - Emergency management protocols
 
-### 3. Economic Impact Evaluation
+### 3. Economic Impact Evaluation (Israeli Healthcare System)
 
 **Direct Medical Costs:**
-- Medication acquisition costs (wholesale and retail)
+- Medication acquisition costs in Israel (NIS)
+- Health basket coverage status and patient copayment
 - Administration and monitoring costs
 - Healthcare utilization impact
 - Adverse event management costs
-- Total cost of therapy analysis
 
 **Health System Integration:**
-- Formulary status and access restrictions
-- Prior authorization requirements
-- Step therapy protocols
-- Health basket inclusion and coverage levels
-- Budget impact modeling
+- Israeli health basket inclusion and coverage levels
+- Prior authorization requirements (if any)
+- Pharmacy availability across Israel
+- Generic alternatives availability
+- Budget impact for Israeli healthcare system
 
 **Cost-Effectiveness Analysis:**
-- Cost per quality-adjusted life year (QALY)
-- Incremental cost-effectiveness ratios
-- Budget impact projections
-- Health technology assessment outcomes
+- Cost per treatment success
+- Comparative cost analysis within therapeutic class
+- Budget impact projections for Israeli health funds
 - Value-based care alignment
+- Economic burden of disease management
 
 ### 4. Patient Experience and Accessibility
 
@@ -179,40 +194,36 @@ For each medication (${drug_list.join(", ")}), provide:
 - Patient preference studies
 - Caregiver burden considerations
 
-**Access and Equity:**
-- Geographic availability across Israel
-- Socioeconomic accessibility factors
-- Language and cultural considerations
+**Access and Equity in Israel:**
+- Geographic availability across Israeli regions
+- Availability in different healthcare settings (community pharmacies, hospitals)
+- Language barriers and multilingual support
 - Special needs population accommodation
 - Healthcare disparities impact
 
 ### 5. Implementation Considerations
 
-**Healthcare System Readiness:**
+**Israeli Healthcare System Readiness:**
 - Provider training and competency requirements
-- Infrastructure and equipment needs
+- Integration with Israeli electronic health records
 - Workflow integration considerations
 - Quality assurance protocols
 - Performance monitoring systems
 
 **Regulatory and Policy Alignment:**
-- Ministry of Health approval status
-- Clinical guideline concordance
+- Israeli Ministry of Health approval status
+- Alignment with Israeli clinical guidelines
 - Health technology assessment recommendations
-- International regulatory harmonization
+- Integration with health fund formularies
 - Policy implementation timelines
-
-## Comparison Criteria Analysis
-
-${generateComparisonCriteriaSection(comparison_criteria)}
 
 ## Decision Matrix Framework
 
 ### Weighted Scoring Methodology
-Create a comprehensive comparison table with the following structure:
+Create a comprehensive comparison table:
 
-| Criteria | Weight | ${drug_list.map(drug => `${drug} Score`).join(" | ")} | ${drug_list.map(drug => `${drug} Weighted`).join(" | ")} |
-|----------|--------|${drug_list.map(() => "----------").join("|")}|${drug_list.map(() => "-----------").join("|")}|
+| Criteria | Weight | ${drugArray.map(drug => `${drug} Score`).join(" | ")} | ${drugArray.map(drug => `${drug} Weighted`).join(" | ")} |
+|----------|--------|${drugArray.map(() => "----------").join("|")}|${drugArray.map(() => "-----------").join("|")}|
 | Clinical Efficacy | 30% | | |
 | Safety Profile | 25% | | |
 | Economic Impact | 20% | | |
@@ -231,172 +242,240 @@ Create a comprehensive comparison table with the following structure:
 
 ### Primary Recommendation
 Based on the comprehensive analysis, provide:
+
 1. **First-line therapy recommendation** with clinical rationale
+   - Preferred medication with supporting evidence
+   - Dosing recommendations and administration guidance
+   - Monitoring requirements and follow-up schedule
+
 2. **Alternative options** for different patient scenarios
+   - Second-line choices and specific indications
+   - Patient-specific considerations (age, comorbidities, preferences)
+   - Switching strategies if first-line fails
+
 3. **Contraindicated combinations** and safety considerations
+   - Absolute and relative contraindications
+   - Drug-drug interactions to avoid
+   - Patient populations requiring special caution
+
 4. **Monitoring requirements** for each recommended option
+   - Baseline assessments before treatment initiation
+   - Ongoing monitoring parameters and frequency
+   - Safety signals requiring immediate attention
 
-### Special Population Considerations
-- **Pediatric population:** Age-specific recommendations and safety
-- **Geriatric population:** Dose adjustments and monitoring
-- **Pregnancy and lactation:** Safety categories and alternatives
-- **Comorbid conditions:** Drug interactions and modifications
-- **Renal/hepatic impairment:** Dose adjustments and monitoring
+### Special Population Considerations in Israel
 
-### Clinical Decision Support
-- **Treatment algorithm** for different clinical scenarios
-- **Switching protocols** between therapeutic options
-- **Combination therapy considerations**
-- **Failure management strategies**
-- **Long-term monitoring protocols**
+**Pediatric Population:**
+- Age-specific dosing and safety considerations
+- Availability of pediatric formulations in Israel
+- Pediatric specialist consultation requirements
+- Family education and caregiver training needs
 
-## Implementation Action Plan
+**Geriatric Population:**
+- Age-related dose adjustments and monitoring
+- Polypharmacy considerations in elderly patients
+- Falls risk assessment and prevention
+- Cognitive function impact evaluation
 
-### Immediate Actions (0-30 days)
-1. **Provider education:** Clinical training and competency development
-2. **System preparation:** Infrastructure and workflow optimization
-3. **Patient communication:** Education materials and support programs
-4. **Quality assurance:** Monitoring and evaluation protocols
+**Pregnancy and Lactation:**
+- Israeli pregnancy safety categories
+- Teratogenic risk assessment
+- Alternative therapies for pregnant patients
+- Breastfeeding compatibility and safety
 
-### Short-term Goals (1-6 months)
-1. **Pilot implementation:** Controlled rollout with selected providers
-2. **Performance monitoring:** Clinical and economic outcomes tracking
-3. **Feedback integration:** Provider and patient experience optimization
-4. **System refinement:** Process improvement and quality enhancement
+**Patients with Comorbidities:**
+- Renal impairment considerations and dose adjustments
+- Hepatic dysfunction impact on drug metabolism
+- Cardiovascular disease interactions
+- Diabetes and metabolic considerations
 
-### Long-term Objectives (6+ months)
-1. **Full-scale deployment:** System-wide implementation
-2. **Outcome evaluation:** Comprehensive effectiveness assessment
-3. **Continuous improvement:** Evidence-based optimization
-4. **Policy integration:** Healthcare system policy alignment
+## Israeli Healthcare Implementation Strategy
+
+### Phase 1: Preparation (0-3 months)
+1. **Stakeholder Engagement:**
+   - Health fund formulary committees
+   - Primary care physician education
+   - Specialist society endorsements
+   - Patient advocacy group consultation
+
+2. **System Preparation:**
+   - Electronic prescribing system updates
+   - Pharmacy inventory and distribution planning
+   - Healthcare provider training program development
+   - Patient education material creation (Hebrew/Arabic/Russian)
+
+### Phase 2: Pilot Implementation (3-6 months)
+1. **Limited Rollout:**
+   - Selected healthcare facilities and providers
+   - Targeted patient populations
+   - Intensive monitoring and feedback collection
+   - Rapid cycle improvement implementation
+
+2. **Performance Monitoring:**
+   - Clinical effectiveness tracking
+   - Safety signal detection
+   - Economic impact assessment
+   - Provider and patient satisfaction surveys
+
+### Phase 3: Full Implementation (6+ months)
+1. **System-wide Deployment:**
+   - All relevant healthcare providers and facilities
+   - Complete integration with health fund systems
+   - Ongoing quality assurance and monitoring
+   - Continuous improvement based on real-world evidence
+
+2. **Long-term Optimization:**
+   - Outcome evaluation and policy refinement
+   - Cost-effectiveness analysis and budget impact
+   - International evidence integration
+   - Future research priorities identification
 
 ## Quality Assurance and Monitoring
 
 ### Clinical Monitoring Framework
-- **Effectiveness indicators:** Primary and secondary outcome measures
-- **Safety surveillance:** Adverse event monitoring and reporting
-- **Quality metrics:** Process and outcome quality indicators
-- **Patient satisfaction:** Experience and outcome satisfaction measures
+- **Effectiveness Indicators:** Response rates, time to symptom relief, functional improvement
+- **Safety Surveillance:** Adverse event reporting, serious adverse event tracking
+- **Quality Metrics:** Prescribing appropriateness, adherence rates, patient satisfaction
+- **Comparative Effectiveness:** Real-world evidence generation and analysis
 
 ### Economic Monitoring System
-- **Cost tracking:** Direct and indirect cost measurement
-- **Budget impact:** Financial impact assessment and forecasting
-- **Value demonstration:** Cost-effectiveness and value-based outcomes
-- **Resource utilization:** Healthcare system resource optimization
+- **Budget Impact:** Health fund expenditure tracking and forecasting
+- **Cost-effectiveness:** Real-world cost per outcome analysis
+- **Value Demonstration:** Patient-reported outcomes and quality of life measures
+- **Resource Optimization:** Healthcare utilization efficiency assessment
 
 ## Evidence-Based Conclusion
 
 ### Summary Recommendations
-Provide a concise summary that includes:
-1. **Preferred therapeutic option** with strength of recommendation
-2. **Alternative choices** with specific use cases
-3. **Key safety considerations** and monitoring requirements
-4. **Economic implications** and cost-effectiveness assessment
-5. **Implementation timeline** and resource requirements
 
-### Future Considerations
-- **Emerging evidence:** Pipeline research and development
-- **Technology advancement:** New delivery systems and formulations
-- **Policy evolution:** Regulatory and reimbursement changes
-- **Patient preference trends:** Evolving patient needs and expectations
+**Preferred Therapeutic Option:**
+- **Primary choice:** [Based on analysis] with strength of recommendation level
+- **Clinical rationale:** Evidence-based justification for selection
+- **Implementation considerations:** Practical aspects for Israeli healthcare system
+
+**Alternative Therapeutic Options:**
+- **Second-line choice:** With specific indications and patient populations
+- **Third-line alternatives:** For special circumstances or contraindications
+- **Rescue therapy:** For treatment failures or emergent situations
+
+**Key Safety Considerations:**
+- **Most important safety signals** requiring attention
+- **Monitoring requirements** and frequency recommendations
+- **Emergency management protocols** for serious adverse events
+- **Patient education priorities** for safe medication use
+
+**Economic Impact Assessment:**
+- **Budget implications** for Israeli healthcare system
+- **Cost-effectiveness** compared to current standard of care
+- **Patient out-of-pocket costs** and financial accessibility
+- **Long-term economic benefits** from improved outcomes
+
+### Implementation Timeline and Resource Requirements
+
+**Immediate Actions (Month 1):**
+- Regulatory approval verification and documentation
+- Health fund formulary submission and review
+- Provider education program development
+- Patient information materials creation
+
+**Short-term Goals (Months 2-6):**
+- Pilot program implementation in selected facilities
+- Healthcare provider training and certification
+- Electronic systems integration and testing
+- Initial outcome and safety monitoring
+
+**Long-term Objectives (6+ months):**
+- Full-scale implementation across Israeli healthcare system
+- Comprehensive outcome evaluation and evidence generation
+- Policy optimization based on real-world experience
+- International collaboration and evidence sharing
 
 ---
 
-**Clinical Disclaimer:** This comparison is based on available evidence at the time of analysis. Healthcare providers should consult current prescribing information, clinical guidelines, and patient-specific factors when making therapeutic decisions. Regular monitoring and reassessment are essential for optimal patient outcomes.
+**Clinical Disclaimer:** This comparison is based on available evidence at the time of analysis and Israeli regulatory status. Healthcare providers should consult current Israeli prescribing information, Ministry of Health guidelines, and consider individual patient factors when making therapeutic decisions. Regular monitoring and reassessment are essential for optimal patient outcomes within the Israeli healthcare context.
 
-**Data Sources:** Israeli Ministry of Health Drug Registry, international clinical databases, peer-reviewed literature, and health technology assessment reports.
+**Data Sources:** Israeli Ministry of Health Drug Registry, Israeli clinical guidelines, international peer-reviewed literature, health technology assessment reports, and Israeli health fund formulary data.
 
-**Last Updated:** ${new Date().toLocaleDateString('he-IL')}`;
+**Language Note:** This analysis is provided in English. Hebrew and Arabic translations should be made available for Israeli healthcare providers and patients as appropriate.
+
+**Last Updated:** ${new Date().toLocaleDateString('he-IL')} (Israel time)
+
+---
+
+## Specific Analysis for Requested Medications
+
+${generateSpecificAnalysis(drugArray, clinical_context, target_population, comparison_focus)}`;
 
   return prompt;
 }
 
-function generateComparisonCriteriaSection(criteria?: any): string {
-  if (!criteria) {
-    return `**Standard Comparison Criteria Applied:**
-- Clinical efficacy and evidence quality
-- Safety profile and risk assessment  
-- Economic impact and cost-effectiveness
-- Patient experience and accessibility
-- Implementation feasibility and requirements`;
-  }
-
-  let section = "**Customized Comparison Criteria:**\n\n";
+function generateSpecificAnalysis(drugs: string[], context?: string, population?: string, focus?: string): string {
+  let analysis = `### Medication-Specific Analysis\n\n`;
   
-  if (criteria.efficacy_focus) {
-    section += `**Clinical Efficacy Focus:**
-- Primary endpoint: ${criteria.efficacy_focus.primary_endpoint || "Standard therapeutic outcomes"}
-- Secondary endpoints: ${criteria.efficacy_focus.secondary_endpoints || "Quality of life and functional measures"}
-- Time horizon: ${criteria.efficacy_focus.time_horizon || "Standard clinical trial duration"}
-- Population specificity: ${criteria.efficacy_focus.population || "General target population"}
-
-`;
+  drugs.forEach((drug, index) => {
+    analysis += `#### ${index + 1}. ${drug}\n\n`;
+    analysis += `**Clinical Profile:**\n`;
+    analysis += `- Therapeutic class and mechanism of action\n`;
+    analysis += `- Primary indications in Israeli clinical practice\n`;
+    analysis += `- Dosage forms available in Israel\n`;
+    analysis += `- Health basket coverage status\n`;
+    analysis += `- Typical dosing regimens\n\n`;
+    
+    analysis += `**Safety Considerations:**\n`;
+    analysis += `- Common adverse effects (>1% incidence)\n`;
+    analysis += `- Serious adverse effects requiring monitoring\n`;
+    analysis += `- Contraindications and precautions\n`;
+    analysis += `- Drug interactions of clinical significance\n`;
+    analysis += `- Special population considerations\n\n`;
+    
+    analysis += `**Economic Factors:**\n`;
+    analysis += `- Average cost in Israel (if available)\n`;
+    analysis += `- Health basket coverage level\n`;
+    analysis += `- Generic alternatives availability\n`;
+    analysis += `- Cost-effectiveness compared to alternatives\n\n`;
+    
+    if (context) {
+      analysis += `**Specific Considerations for ${context}:**\n`;
+      analysis += `- Relevance to clinical indication\n`;
+      analysis += `- Evidence quality for this indication\n`;
+      analysis += `- Israeli guidelines recommendations\n\n`;
+    }
+    
+    if (population) {
+      analysis += `**Suitability for ${population}:**\n`;
+      analysis += `- Population-specific efficacy data\n`;
+      analysis += `- Safety profile in this population\n`;
+      analysis += `- Dosing modifications required\n`;
+      analysis += `- Monitoring requirements\n\n`;
+    }
+  });
+  
+  if (focus) {
+    analysis += `### Primary Focus: ${focus}\n\n`;
+    analysis += `Based on the requested focus on "${focus}", provide detailed analysis of:\n\n`;
+    
+    if (focus.toLowerCase().includes('safety')) {
+      analysis += `- Comparative safety profiles across all medications\n`;
+      analysis += `- Risk stratification by patient factors\n`;
+      analysis += `- Safety monitoring protocols\n`;
+      analysis += `- Adverse event management strategies\n`;
+    } else if (focus.toLowerCase().includes('efficacy')) {
+      analysis += `- Head-to-head efficacy comparisons\n`;
+      analysis += `- Clinical trial evidence quality\n`;
+      analysis += `- Real-world effectiveness data\n`;
+      analysis += `- Response rate comparisons\n`;
+    } else if (focus.toLowerCase().includes('cost')) {
+      analysis += `- Detailed cost analysis for Israeli system\n`;
+      analysis += `- Budget impact projections\n`;
+      analysis += `- Cost-effectiveness ratios\n`;
+      analysis += `- Value-based care considerations\n`;
+    } else {
+      analysis += `- Detailed analysis focused on: ${focus}\n`;
+      analysis += `- Comparative evaluation across medications\n`;
+      analysis += `- Clinical decision support for this focus area\n`;
+      analysis += `- Implementation recommendations\n`;
+    }
   }
-
-  if (criteria.safety_priorities) {
-    section += `**Safety Assessment Priorities:**
-- High-risk populations: ${criteria.safety_priorities.high_risk_populations || "Elderly, pediatric, pregnant patients"}
-- Critical adverse events: ${criteria.safety_priorities.critical_events || "Serious adverse reactions"}
-- Monitoring intensity: ${criteria.safety_priorities.monitoring_level || "Standard pharmacovigilance"}
-- Risk tolerance: ${criteria.safety_priorities.risk_tolerance || "Conservative safety approach"}
-
-`;
-  }
-
-  if (criteria.economic_constraints) {
-    section += `**Economic Evaluation Parameters:**
-- Budget constraints: ${criteria.economic_constraints.budget_limit || "Standard health system budget"}
-- Cost perspective: ${criteria.economic_constraints.perspective || "Healthcare system perspective"}
-- Time horizon: ${criteria.economic_constraints.time_horizon || "1-5 year analysis"}
-- Threshold values: ${criteria.economic_constraints.thresholds || "Standard cost-effectiveness thresholds"}
-
-`;
-  }
-
-  if (criteria.patient_factors) {
-    section += `**Patient-Centered Considerations:**
-- Quality of life priorities: ${criteria.patient_factors.qol_priorities || "Standard quality of life measures"}
-- Convenience factors: ${criteria.patient_factors.convenience || "Dosing frequency and administration ease"}
-- Cultural considerations: ${criteria.patient_factors.cultural || "Israeli healthcare cultural factors"}
-- Accessibility needs: ${criteria.patient_factors.accessibility || "Standard accessibility requirements"}
-
-`;
-  }
-
-  return section;
-}
-
-// ===== TYPE DEFINITIONS =====
-
-interface CompareTherapeuticOptionsInput {
-  drug_list: string[];
-  comparison_criteria?: {
-    efficacy_focus?: {
-      primary_endpoint?: string;
-      secondary_endpoints?: string;
-      time_horizon?: string;
-      population?: string;
-    };
-    safety_priorities?: {
-      high_risk_populations?: string;
-      critical_events?: string;
-      monitoring_level?: string;
-      risk_tolerance?: string;
-    };
-    economic_constraints?: {
-      budget_limit?: string;
-      perspective?: string;
-      time_horizon?: string;
-      thresholds?: string;
-    };
-    patient_factors?: {
-      qol_priorities?: string;
-      convenience?: string;
-      cultural?: string;
-      accessibility?: string;
-    };
-  };
-  clinical_context?: string;
-  target_population?: string;
-  decision_framework?: string;
+  
+  return analysis;
 }

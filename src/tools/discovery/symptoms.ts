@@ -4,23 +4,33 @@
  * Transforms GetBySymptom API into intelligent symptom discovery system
  */
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { BrowseAvailableSymptomsSchema, BrowseAvailableSymptomsInput, McpResponse } from "../../types/mcp.js";
-import { getApiClient } from "../../services/israelDrugsApi.js";
-import { getResponseFormatter } from "../../services/responseFormatter.js";
-import { 
-  validateToolInput
-} from "../../utils/validators.js";
-import { classifyError, createComprehensiveErrorResponse } from "../../utils/errorHandler.js";
-import { API_BEHAVIOR, MCP_CONFIG } from "../../config/constants.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+  BrowseAvailableSymptomsSchema,
+  BrowseAvailableSymptomsInput,
+  McpResponse,
+} from '../../types/mcp.js';
+import { getApiClient } from '../../services/israelDrugsApi.js';
+import { getResponseFormatter } from '../../services/responseFormatter.js';
+import { validateToolInput } from '../../utils/validators.js';
+import { classifyError, createComprehensiveErrorResponse } from '../../utils/errorHandler.js';
+import { API_BEHAVIOR, MCP_CONFIG } from '../../config/constants.js';
+
+type ValidatedBrowseAvailableSymptomsInput = BrowseAvailableSymptomsInput & {
+  include_popularity: NonNullable<BrowseAvailableSymptomsInput['include_popularity']>;
+  max_per_category: NonNullable<BrowseAvailableSymptomsInput['max_per_category']>;
+  include_popular_symptoms: NonNullable<BrowseAvailableSymptomsInput['include_popular_symptoms']>;
+  max_popular_results: NonNullable<BrowseAvailableSymptomsInput['max_popular_results']>;
+  clinical_priority_order: NonNullable<BrowseAvailableSymptomsInput['clinical_priority_order']>;
+};
 
 // ===== TOOL REGISTRATION =====
 
 export function registerSymptomDiscoveryTool(server: McpServer): void {
   server.registerTool(
-    "browse_available_symptoms",
+    'browse_available_symptoms',
     {
-      title: "Medical Condition Discovery System",
+      title: 'Medical Condition Discovery System',
       description: `Comprehensive medical condition and symptom discovery tool that provides structured access to the complete Israeli healthcare symptom classification system. Essential for clinical decision support and therapeutic pathway exploration.
 
 **Clinical Purpose:** Foundational tool for condition-based treatment discovery. Enables systematic exploration of medical conditions, symptoms, and their corresponding treatment options within the Israeli healthcare framework. Critical for evidence-based clinical decision-making and patient care pathways.
@@ -56,72 +66,73 @@ export function registerSymptomDiscoveryTool(server: McpServer): void {
 **Output:** Returns structured medical condition hierarchy with clinical context, treatment availability indicators, prevalence data, and intelligent navigation guidance for optimal therapeutic pathway discovery.
 
 **Clinical Context:** This tool serves as the entry point for symptom-based treatment discovery. Use when healthcare providers or patients need to identify appropriate treatment categories, understand available therapeutic options, or navigate from general symptoms to specific treatment protocols.`,
-      inputSchema: BrowseAvailableSymptomsSchema
+      inputSchema: BrowseAvailableSymptomsSchema.shape,
     },
     async (input: BrowseAvailableSymptomsInput) => {
       const startTime = Date.now();
-      
+
       try {
         // Validate and process input
         const { data: validatedInput, warnings } = validateToolInput(
           BrowseAvailableSymptomsSchema,
           input,
-          "browse_available_symptoms"
+          'browse_available_symptoms',
         );
-        
+
+        const validatedSymptomsInput: ValidatedBrowseAvailableSymptomsInput = validatedInput as ValidatedBrowseAvailableSymptomsInput;
+
         // Execute symptom discovery with intelligent enhancement
-        const symptomData = await executeSymptomDiscovery(validatedInput);
-        
+        const symptomData = await executeSymptomDiscovery(validatedSymptomsInput);
+
         // Optionally get popular symptoms for context
-        const popularSymptoms = validatedInput.include_popular_symptoms ? 
-          await getPopularSymptomsContext(validatedInput.max_popular_results || 10) : null;
-        
+        const popularSymptoms = validatedSymptomsInput.include_popular_symptoms
+          ? await getPopularSymptomsContext(validatedSymptomsInput.max_popular_results || 10)
+          : null;
+
         // Format response with clinical intelligence
         const formatter = getResponseFormatter();
         const formattedResponse = formatter.formatSymptomHierarchyResponse(
           symptomData,
           popularSymptoms || undefined,
-          startTime
+          startTime,
         );
-        
+
         // Enhance with symptom discovery intelligence
-        return enhanceSymptomDiscoveryResponse(formattedResponse, validatedInput, warnings);
-        
+        return enhanceSymptomDiscoveryResponse(formattedResponse, validatedSymptomsInput, warnings);
       } catch (error) {
-        const classifiedError = classifyError(error, "browse_available_symptoms");
+        const classifiedError = classifyError(error, 'browse_available_symptoms');
         return createComprehensiveErrorResponse(classifiedError, undefined, {
-          toolName: "browse_available_symptoms",
+          toolName: 'browse_available_symptoms',
           userInput: input,
-          attemptNumber: 1
+          attemptNumber: 1,
         });
       }
-    }
+    },
   );
 }
 
 // ===== SYMPTOM DISCOVERY EXECUTION =====
 
 async function executeSymptomDiscovery(
-  userInput: BrowseAvailableSymptomsInput
+  userInput: ValidatedBrowseAvailableSymptomsInput,
 ): Promise<any> {
   const apiClient = getApiClient();
-  
+
   try {
-    console.info("Retrieving complete symptom hierarchy from healthcare system");
-    
+    // console.info('Retrieving complete symptom hierarchy from healthcare system');
+
     // Get complete symptom hierarchy
     const symptomHierarchy = await apiClient.getBySymptom({
-      prescription: API_BEHAVIOR.PRESCRIPTION_LOGIC.OTC_ONLY // Use consistent API pattern
+      prescription: API_BEHAVIOR.PRESCRIPTION_LOGIC.OTC_ONLY, // Use consistent API pattern
     });
-    
+
     // Process and filter the hierarchy based on user preferences
     const processedHierarchy = await processSymptomHierarchy(symptomHierarchy, userInput);
-    
+
     return processedHierarchy;
-    
   } catch (error) {
-    console.error("Symptom discovery failed:", error);
-    
+    // console.error('Symptom discovery failed:', error);
+
     // Attempt recovery with alternative approach
     return await attemptSymptomDiscoveryRecovery(userInput);
   }
@@ -129,18 +140,18 @@ async function executeSymptomDiscovery(
 
 async function processSymptomHierarchy(
   rawHierarchy: any[],
-  userInput: BrowseAvailableSymptomsInput
+  userInput: ValidatedBrowseAvailableSymptomsInput,
 ): Promise<any[]> {
   let processedData = rawHierarchy;
-  
+
   // Apply category filtering if specified
   if (userInput.category_filter && userInput.category_filter.trim()) {
     const filterLower = userInput.category_filter.toLowerCase();
-    processedData = processedData.filter((category: any) => 
-      category.bySymptomMain.toLowerCase().includes(filterLower)
+    processedData = processedData.filter((category: any) =>
+      category.bySymptomMain.toLowerCase().includes(filterLower),
     );
   }
-  
+
   // Enhance each category with clinical intelligence
   const enhancedData = await Promise.all(
     processedData.map(async (category: any) => {
@@ -149,13 +160,13 @@ async function processSymptomHierarchy(
         clinical_context: await generateClinicalContext(category),
         treatment_availability: await assessTreatmentAvailability(category),
         symptom_analysis: await analyzeSymptoms(category.list || []),
-        navigation_guidance: generateNavigationGuidance(category, userInput)
+        navigation_guidance: generateNavigationGuidance(category, userInput),
       };
-      
+
       return enhancedCategory;
-    })
+    }),
   );
-  
+
   // Apply clinical priority ordering if requested
   if (userInput.clinical_priority_order) {
     enhancedData.sort((a, b) => {
@@ -164,43 +175,42 @@ async function processSymptomHierarchy(
       return priorityB - priorityA; // Higher priority first
     });
   }
-  
+
   return enhancedData;
 }
 
 async function getPopularSymptomsContext(maxResults: number): Promise<any[]> {
   const apiClient = getApiClient();
-  
+
   try {
     const popularSymptoms = await apiClient.getFastSearchPopularSymptoms({
-      rowCount: Math.min(maxResults, MCP_CONFIG.RESPONSE_LIMITS.MAX_POPULAR_SYMPTOMS)
+      rowCount: Math.min(maxResults, MCP_CONFIG.RESPONSE_LIMITS.MAX_POPULAR_SYMPTOMS),
     });
-    
+
     return popularSymptoms;
-    
   } catch (error) {
-    console.warn("Could not retrieve popular symptoms context:", error);
+    // console.warn('Could not retrieve popular symptoms context:', error);
     return [];
   }
 }
 
 async function attemptSymptomDiscoveryRecovery(
-  userInput: BrowseAvailableSymptomsInput
+  userInput: BrowseAvailableSymptomsInput,
 ): Promise<any[]> {
-  console.info("Attempting symptom discovery recovery");
-  
+  // console.info('Attempting symptom discovery recovery');
+
   // For recovery, return a basic structure that won't fail
   return [
     {
-      bySymptomMain: "מערכת לא זמינה זמנית",
+      bySymptomMain: 'מערכת לא זמינה זמנית',
       list: [],
       clinical_context: {
-        specialty_area: "system_recovery",
-        clinical_significance: "temporary_unavailable",
-        common_treatments: ["consult_healthcare_provider"]
+        specialty_area: 'system_recovery',
+        clinical_significance: 'temporary_unavailable',
+        common_treatments: ['consult_healthcare_provider'],
       },
-      recovery_mode: true
-    }
+      recovery_mode: true,
+    },
   ];
 }
 
@@ -208,29 +218,29 @@ async function attemptSymptomDiscoveryRecovery(
 
 async function generateClinicalContext(category: any): Promise<Record<string, unknown>> {
   const categoryName = category.bySymptomMain;
-  
+
   return {
     specialty_area: determineSpecialtyArea(categoryName),
     clinical_significance: assessClinicalSignificance(categoryName),
     urgency_indicators: generateUrgencyIndicators(categoryName),
     common_treatments: inferCommonTreatments(categoryName),
     self_care_potential: assessSelfCarePotential(categoryName),
-    referral_guidelines: generateReferralGuidelines(categoryName)
+    referral_guidelines: generateReferralGuidelines(categoryName),
   };
 }
 
 async function assessTreatmentAvailability(category: any): Promise<Record<string, unknown>> {
   const symptoms = category.list || [];
-  
+
   return {
     total_symptoms: symptoms.length,
     treatment_categories: {
       otc_treatable: estimateOTCTreatableSymptoms(symptoms),
       prescription_required: estimatePrescriptionSymptoms(symptoms),
-      specialist_care: estimateSpecialistSymptoms(category.bySymptomMain)
+      specialist_care: estimateSpecialistSymptoms(category.bySymptomMain),
     },
     medication_classes: inferMedicationClasses(category.bySymptomMain),
-    health_basket_coverage: estimateHealthBasketCoverage(category.bySymptomMain)
+    health_basket_coverage: estimateHealthBasketCoverage(category.bySymptomMain),
   };
 }
 
@@ -240,42 +250,44 @@ async function analyzeSymptoms(symptoms: any[]): Promise<Record<string, unknown>
     complexity_distribution: analyzeSymptomComplexity(symptoms),
     prevalence_indicators: analyzeSymptomPrevalence(symptoms),
     treatment_pathways: generateTreatmentPathways(symptoms),
-    clinical_priorities: prioritizeSymptoms(symptoms)
+    clinical_priorities: prioritizeSymptoms(symptoms),
   };
 }
 
 function generateNavigationGuidance(
   category: any,
-  userInput: BrowseAvailableSymptomsInput
+  userInput: ValidatedBrowseAvailableSymptomsInput,
 ): string[] {
   const guidance: string[] = [];
   const categoryName = category.bySymptomMain;
   const symptoms = category.list || [];
-  
+
   // Category-specific guidance
   guidance.push(`Category: ${categoryName} contains ${symptoms.length} specific symptoms`);
-  
+
   if (symptoms.length > 0) {
     guidance.push("Use 'find_drugs_for_symptom' with these category and symptom combinations");
-    
+
     // Highlight most relevant symptoms
     const prioritySymptoms = symptoms.slice(0, 3);
     prioritySymptoms.forEach((symptom: any) => {
       guidance.push(`- "${categoryName}" → "${symptom.bySymptomName}"`);
     });
   }
-  
+
   // Clinical pathway guidance
   if (isEmergencyCategory(categoryName)) {
-    guidance.push("PRIORITY: Some conditions in this category may require urgent medical attention");
+    guidance.push(
+      'PRIORITY: Some conditions in this category may require urgent medical attention',
+    );
   }
-  
+
   if (hasSelfCareOptions(categoryName)) {
-    guidance.push("Many conditions in this category have self-care treatment options");
+    guidance.push('Many conditions in this category have self-care treatment options');
   }
-  
-  guidance.push("Explore specific symptoms for detailed treatment recommendations");
-  
+
+  guidance.push('Explore specific symptoms for detailed treatment recommendations');
+
   return guidance;
 }
 
@@ -283,134 +295,138 @@ function generateNavigationGuidance(
 
 function determineSpecialtyArea(categoryName: string): string {
   const categoryLower = categoryName.toLowerCase();
-  
-  if (categoryLower.includes("כאב") || categoryLower.includes("חום")) {
-    return "pain_management_internal_medicine";
+
+  if (categoryLower.includes('כאב') || categoryLower.includes('חום')) {
+    return 'pain_management_internal_medicine';
   }
-  if (categoryLower.includes("אף") || categoryLower.includes("אוזן") || categoryLower.includes("גרון")) {
-    return "otolaryngology_family_medicine";
+  if (
+    categoryLower.includes('אף') ||
+    categoryLower.includes('אוזן') ||
+    categoryLower.includes('גרון')
+  ) {
+    return 'otolaryngology_family_medicine';
   }
-  if (categoryLower.includes("עיכול") || categoryLower.includes("בטן")) {
-    return "gastroenterology_family_medicine";
+  if (categoryLower.includes('עיכול') || categoryLower.includes('בטן')) {
+    return 'gastroenterology_family_medicine';
   }
-  if (categoryLower.includes("עור")) {
-    return "dermatology";
+  if (categoryLower.includes('עור')) {
+    return 'dermatology';
   }
-  if (categoryLower.includes("אלרגיה")) {
-    return "allergy_immunology";
+  if (categoryLower.includes('אלרגיה')) {
+    return 'allergy_immunology';
   }
-  if (categoryLower.includes("נפש") || categoryLower.includes("שינה")) {
-    return "psychiatry_neurology";
+  if (categoryLower.includes('נפש') || categoryLower.includes('שינה')) {
+    return 'psychiatry_neurology';
   }
-  
-  return "family_medicine_general";
+
+  return 'family_medicine_general';
 }
 
 function assessClinicalSignificance(categoryName: string): string {
   const categoryLower = categoryName.toLowerCase();
-  
-  if (categoryLower.includes("חום") || categoryLower.includes("כאב")) {
-    return "high_clinical_significance";
+
+  if (categoryLower.includes('חום') || categoryLower.includes('כאב')) {
+    return 'high_clinical_significance';
   }
-  if (categoryLower.includes("אלרגיה") || categoryLower.includes("נשימה")) {
-    return "moderate_to_high_significance";
+  if (categoryLower.includes('אלרגיה') || categoryLower.includes('נשימה')) {
+    return 'moderate_to_high_significance';
   }
-  if (categoryLower.includes("עור") || categoryLower.includes("עיכול")) {
-    return "moderate_significance";
+  if (categoryLower.includes('עור') || categoryLower.includes('עיכול')) {
+    return 'moderate_significance';
   }
-  
-  return "standard_clinical_significance";
+
+  return 'standard_clinical_significance';
 }
 
 function generateUrgencyIndicators(categoryName: string): string[] {
   const indicators: string[] = [];
   const categoryLower = categoryName.toLowerCase();
-  
-  if (categoryLower.includes("כאב")) {
-    indicators.push("Severe pain requires immediate evaluation");
-    indicators.push("Chronic pain needs systematic management approach");
+
+  if (categoryLower.includes('כאב')) {
+    indicators.push('Severe pain requires immediate evaluation');
+    indicators.push('Chronic pain needs systematic management approach');
   }
-  
-  if (categoryLower.includes("נשימה") || categoryLower.includes("גרון")) {
-    indicators.push("Breathing difficulties require urgent assessment");
-    indicators.push("Severe throat pain may indicate serious infection");
+
+  if (categoryLower.includes('נשימה') || categoryLower.includes('גרון')) {
+    indicators.push('Breathing difficulties require urgent assessment');
+    indicators.push('Severe throat pain may indicate serious infection');
   }
-  
-  if (categoryLower.includes("אלרגיה")) {
-    indicators.push("Severe allergic reactions require emergency care");
-    indicators.push("Anaphylaxis symptoms need immediate medical attention");
+
+  if (categoryLower.includes('אלרגיה')) {
+    indicators.push('Severe allergic reactions require emergency care');
+    indicators.push('Anaphylaxis symptoms need immediate medical attention');
   }
-  
-  indicators.push("Persistent or worsening symptoms warrant medical evaluation");
-  
+
+  indicators.push('Persistent or worsening symptoms warrant medical evaluation');
+
   return indicators;
 }
 
 function inferCommonTreatments(categoryName: string): string[] {
   const treatments: string[] = [];
   const categoryLower = categoryName.toLowerCase();
-  
-  if (categoryLower.includes("כאב") || categoryLower.includes("חום")) {
-    treatments.push("Analgesics (paracetamol, ibuprofen)");
-    treatments.push("Topical pain relievers");
-    treatments.push("Non-pharmacological interventions");
+
+  if (categoryLower.includes('כאב') || categoryLower.includes('חום')) {
+    treatments.push('Analgesics (paracetamol, ibuprofen)');
+    treatments.push('Topical pain relievers');
+    treatments.push('Non-pharmacological interventions');
   }
-  
-  if (categoryLower.includes("גרון") || categoryLower.includes("אף")) {
-    treatments.push("Local throat treatments");
-    treatments.push("Nasal decongestants");
-    treatments.push("Supportive care measures");
+
+  if (categoryLower.includes('גרון') || categoryLower.includes('אף')) {
+    treatments.push('Local throat treatments');
+    treatments.push('Nasal decongestants');
+    treatments.push('Supportive care measures');
   }
-  
-  if (categoryLower.includes("אלרגיה")) {
-    treatments.push("Antihistamines");
-    treatments.push("Topical anti-inflammatory treatments");
-    treatments.push("Allergen avoidance");
+
+  if (categoryLower.includes('אלרגיה')) {
+    treatments.push('Antihistamines');
+    treatments.push('Topical anti-inflammatory treatments');
+    treatments.push('Allergen avoidance');
   }
-  
-  treatments.push("Symptomatic relief medications");
-  treatments.push("Lifestyle and supportive measures");
-  
+
+  treatments.push('Symptomatic relief medications');
+  treatments.push('Lifestyle and supportive measures');
+
   return treatments;
 }
 
 function assessSelfCarePotential(categoryName: string): string {
   const categoryLower = categoryName.toLowerCase();
-  
-  if (categoryLower.includes("כאב") && !categoryLower.includes("חמור")) {
-    return "high_self_care_potential";
+
+  if (categoryLower.includes('כאב') && !categoryLower.includes('חמור')) {
+    return 'high_self_care_potential';
   }
-  if (categoryLower.includes("גרון") || categoryLower.includes("עור")) {
-    return "moderate_self_care_potential";
+  if (categoryLower.includes('גרון') || categoryLower.includes('עור')) {
+    return 'moderate_self_care_potential';
   }
-  if (categoryLower.includes("אלרגיה") && categoryLower.includes("קל")) {
-    return "moderate_self_care_potential";
+  if (categoryLower.includes('אלרגיה') && categoryLower.includes('קל')) {
+    return 'moderate_self_care_potential';
   }
-  
-  return "limited_self_care_potential";
+
+  return 'limited_self_care_potential';
 }
 
 function generateReferralGuidelines(categoryName: string): string[] {
   const guidelines: string[] = [];
   const categoryLower = categoryName.toLowerCase();
-  
-  if (categoryLower.includes("כאב")) {
-    guidelines.push("Chronic or severe pain: refer to pain management specialist");
-    guidelines.push("Neurological symptoms: consider neurology referral");
+
+  if (categoryLower.includes('כאב')) {
+    guidelines.push('Chronic or severe pain: refer to pain management specialist');
+    guidelines.push('Neurological symptoms: consider neurology referral');
   }
-  
-  if (categoryLower.includes("אף") || categoryLower.includes("גרון")) {
-    guidelines.push("Persistent symptoms >2 weeks: ENT consultation");
-    guidelines.push("Recurrent infections: specialist evaluation");
+
+  if (categoryLower.includes('אף') || categoryLower.includes('גרון')) {
+    guidelines.push('Persistent symptoms >2 weeks: ENT consultation');
+    guidelines.push('Recurrent infections: specialist evaluation');
   }
-  
-  if (categoryLower.includes("עיכול")) {
-    guidelines.push("Chronic digestive issues: gastroenterology referral");
-    guidelines.push("Red flag symptoms: urgent specialist consultation");
+
+  if (categoryLower.includes('עיכול')) {
+    guidelines.push('Chronic digestive issues: gastroenterology referral');
+    guidelines.push('Red flag symptoms: urgent specialist consultation');
   }
-  
-  guidelines.push("Complex or refractory cases warrant specialist evaluation");
-  
+
+  guidelines.push('Complex or refractory cases warrant specialist evaluation');
+
   return guidelines;
 }
 
@@ -426,85 +442,87 @@ function estimatePrescriptionSymptoms(symptoms: any[]): number {
 
 function estimateSpecialistSymptoms(categoryName: string): number {
   const categoryLower = categoryName.toLowerCase();
-  
-  if (categoryLower.includes("מורכב") || categoryLower.includes("כרוני")) {
+
+  if (categoryLower.includes('מורכב') || categoryLower.includes('כרוני')) {
     return 3; // High specialist need
   }
-  if (categoryLower.includes("כאב") || categoryLower.includes("אלרגיה")) {
+  if (categoryLower.includes('כאב') || categoryLower.includes('אלרגיה')) {
     return 2; // Moderate specialist need
   }
-  
+
   return 1; // Standard specialist need
 }
 
 function inferMedicationClasses(categoryName: string): string[] {
   const classes: string[] = [];
   const categoryLower = categoryName.toLowerCase();
-  
-  if (categoryLower.includes("כאב")) {
-    classes.push("Analgesics", "NSAIDs", "Topical analgesics");
+
+  if (categoryLower.includes('כאב')) {
+    classes.push('Analgesics', 'NSAIDs', 'Topical analgesics');
   }
-  if (categoryLower.includes("חום")) {
-    classes.push("Antipyretics", "Anti-inflammatory agents");
+  if (categoryLower.includes('חום')) {
+    classes.push('Antipyretics', 'Anti-inflammatory agents');
   }
-  if (categoryLower.includes("אלרגיה")) {
-    classes.push("Antihistamines", "Corticosteroids", "Mast cell stabilizers");
+  if (categoryLower.includes('אלרגיה')) {
+    classes.push('Antihistamines', 'Corticosteroids', 'Mast cell stabilizers');
   }
-  if (categoryLower.includes("גרון")) {
-    classes.push("Local anesthetics", "Antiseptics", "Anti-inflammatory");
+  if (categoryLower.includes('גרון')) {
+    classes.push('Local anesthetics', 'Antiseptics', 'Anti-inflammatory');
   }
-  
+
   return classes;
 }
 
 function estimateHealthBasketCoverage(categoryName: string): string {
   const categoryLower = categoryName.toLowerCase();
-  
-  if (categoryLower.includes("כאב") || categoryLower.includes("חום")) {
-    return "high_coverage_essential_medications";
+
+  if (categoryLower.includes('כאב') || categoryLower.includes('חום')) {
+    return 'high_coverage_essential_medications';
   }
-  if (categoryLower.includes("אלרגיה")) {
-    return "good_coverage_antihistamines";
+  if (categoryLower.includes('אלרגיה')) {
+    return 'good_coverage_antihistamines';
   }
-  if (categoryLower.includes("עור")) {
-    return "moderate_coverage_basic_treatments";
+  if (categoryLower.includes('עור')) {
+    return 'moderate_coverage_basic_treatments';
   }
-  
-  return "standard_coverage_common_treatments";
+
+  return 'standard_coverage_common_treatments';
 }
 
 function analyzeSymptomComplexity(symptoms: any[]): Record<string, number> {
   // Simple complexity analysis based on symptom names
-  let simple = 0, moderate = 0, complex = 0;
-  
+  let simple = 0,
+    moderate = 0,
+    complex = 0;
+
   symptoms.forEach((symptom: any) => {
     const name = symptom.bySymptomName.toLowerCase();
-    
-    if (name.includes("כאב") || name.includes("חום")) {
+
+    if (name.includes('כאב') || name.includes('חום')) {
       simple++;
-    } else if (name.includes("כרוני") || name.includes("מורכב")) {
+    } else if (name.includes('כרוני') || name.includes('מורכב')) {
       complex++;
     } else {
       moderate++;
     }
   });
-  
+
   return { simple, moderate, complex };
 }
 
 function analyzeSymptomPrevalence(symptoms: any[]): string {
   // Placeholder for prevalence analysis
-  if (symptoms.length > 15) return "high_prevalence_category";
-  if (symptoms.length > 8) return "moderate_prevalence_category";
-  return "standard_prevalence_category";
+  if (symptoms.length > 15) return 'high_prevalence_category';
+  if (symptoms.length > 8) return 'moderate_prevalence_category';
+  return 'standard_prevalence_category';
 }
 
 function generateTreatmentPathways(symptoms: any[]): string[] {
   return [
-    "Initial assessment and symptom evaluation",
-    "Conservative treatment approach with OTC options",
-    "Prescription therapy if conservative measures insufficient",
-    "Specialist referral for complex or refractory cases"
+    'Initial assessment and symptom evaluation',
+    'Conservative treatment approach with OTC options',
+    'Prescription therapy if conservative measures insufficient',
+    'Specialist referral for complex or refractory cases',
   ];
 }
 
@@ -518,48 +536,50 @@ function prioritizeSymptoms(symptoms: any[]): string[] {
     })
     .slice(0, 5)
     .map((s: any) => s.bySymptomName);
-  
+
   return prioritized;
 }
 
 function getSymptomPriorityScore(symptomName: string): number {
   const name = symptomName.toLowerCase();
-  
-  if (name.includes("כאב") || name.includes("חום")) return 3;
-  if (name.includes("אלרגיה") || name.includes("נשימה")) return 2;
+
+  if (name.includes('כאב') || name.includes('חום')) return 3;
+  if (name.includes('אלרגיה') || name.includes('נשימה')) return 2;
   return 1;
 }
 
 function determineClinicalPriority(categoryName: string): number {
   const categoryLower = categoryName.toLowerCase();
-  
-  if (categoryLower.includes("כאב") || categoryLower.includes("חום")) return 5;
-  if (categoryLower.includes("נשימה") || categoryLower.includes("אלרגיה")) return 4;
-  if (categoryLower.includes("עיכול") || categoryLower.includes("גרון")) return 3;
-  if (categoryLower.includes("עור")) return 2;
+
+  if (categoryLower.includes('כאב') || categoryLower.includes('חום')) return 5;
+  if (categoryLower.includes('נשימה') || categoryLower.includes('אלרגיה')) return 4;
+  if (categoryLower.includes('עיכול') || categoryLower.includes('גרון')) return 3;
+  if (categoryLower.includes('עור')) return 2;
   return 1;
 }
 
 function isEmergencyCategory(categoryName: string): boolean {
   const categoryLower = categoryName.toLowerCase();
-  return categoryLower.includes("נשימה") || 
-         categoryLower.includes("לב") || 
-         categoryLower.includes("אלרגיה");
+  return (
+    categoryLower.includes('נשימה') ||
+    categoryLower.includes('לב') ||
+    categoryLower.includes('אלרגיה')
+  );
 }
 
 function hasSelfCareOptions(categoryName: string): boolean {
   const categoryLower = categoryName.toLowerCase();
-  return categoryLower.includes("כאב") || 
-         categoryLower.includes("גרון") || 
-         categoryLower.includes("עור");
+  return (
+    categoryLower.includes('כאב') || categoryLower.includes('גרון') || categoryLower.includes('עור')
+  );
 }
 
 // ===== RESPONSE ENHANCEMENT =====
 
 function enhanceSymptomDiscoveryResponse(
   baseResponse: any,
-  userInput: BrowseAvailableSymptomsInput,
-  validationWarnings: string[]
+  userInput: ValidatedBrowseAvailableSymptomsInput,
+  validationWarnings: string[],
 ): McpResponse<any> {
   const enhancedResponse = {
     ...baseResponse,
@@ -567,166 +587,177 @@ function enhanceSymptomDiscoveryResponse(
       ...baseResponse.data,
       discovery_analysis: generateDiscoveryAnalysis(baseResponse.data, userInput),
       clinical_pathways: generateClinicalPathways(baseResponse.data),
-      navigation_strategy: generateNavigationStrategy(baseResponse.data, userInput)
-    }
+      navigation_strategy: generateNavigationStrategy(baseResponse.data, userInput),
+    },
   };
-  
+
   // Add validation warnings
   if (validationWarnings.length > 0) {
     enhancedResponse.warnings = [...(enhancedResponse.warnings || []), ...validationWarnings];
   }
-  
+
   // Enhance clinical notes
   enhancedResponse.clinical_notes = [
     ...enhancedResponse.clinical_notes,
-    ...generateSymptomDiscoveryNotes(userInput)
+    ...generateSymptomDiscoveryNotes(userInput),
   ];
-  
+
   // Enhance next actions for symptom discovery workflow
   enhancedResponse.next_suggested_actions = enhanceSymptomDiscoveryNextActions(
     baseResponse.next_suggested_actions || [],
     baseResponse.data,
-    userInput
+    userInput,
   );
-  
+
   return enhancedResponse;
 }
 
 function generateDiscoveryAnalysis(
   discoveryData: any,
-  userInput: BrowseAvailableSymptomsInput
+  userInput: ValidatedBrowseAvailableSymptomsInput,
 ): Record<string, unknown> {
   const categories = discoveryData.categories || [];
-  
+
   return {
     scope_analysis: {
       total_categories: categories.length,
-      filtered_categories: userInput.category_filter ? 
-        categories.filter((c: any) => c.bySymptomMain.toLowerCase().includes(userInput.category_filter!.toLowerCase())).length 
+      filtered_categories: userInput.category_filter
+        ? categories.filter((c: any) =>
+            c.bySymptomMain.toLowerCase().includes(userInput.category_filter!.toLowerCase()),
+          ).length
         : categories.length,
-      coverage_assessment: "comprehensive_israeli_healthcare_system"
+      coverage_assessment: 'comprehensive_israeli_healthcare_system',
     },
     clinical_distribution: {
-      emergency_categories: categories.filter((c: any) => isEmergencyCategory(c.bySymptomMain)).length,
-      self_care_categories: categories.filter((c: any) => hasSelfCareOptions(c.bySymptomMain)).length,
-      specialist_categories: categories.filter((c: any) => 
-        determineSpecialtyArea(c.bySymptomMain) !== "family_medicine_general"
-      ).length
+      emergency_categories: categories.filter((c: any) => isEmergencyCategory(c.bySymptomMain))
+        .length,
+      self_care_categories: categories.filter((c: any) => hasSelfCareOptions(c.bySymptomMain))
+        .length,
+      specialist_categories: categories.filter(
+        (c: any) => determineSpecialtyArea(c.bySymptomMain) !== 'family_medicine_general',
+      ).length,
     },
-    discovery_guidance: generateDiscoveryGuidance(categories, userInput)
+    discovery_guidance: generateDiscoveryGuidance(categories, userInput),
   };
 }
 
 function generateClinicalPathways(discoveryData: any): Record<string, string[]> {
   return {
     symptom_to_treatment: [
-      "1. Identify symptom category from available options",
-      "2. Select specific symptom within category",
+      '1. Identify symptom category from available options',
+      '2. Select specific symptom within category',
       "3. Use 'find_drugs_for_symptom' for treatment options",
-      "4. Evaluate treatment alternatives and safety"
+      '4. Evaluate treatment alternatives and safety',
     ],
     self_care_pathway: [
-      "1. Assess symptom severity and duration",
-      "2. Consider non-pharmacological interventions",
-      "3. Try appropriate OTC medications if available",
-      "4. Monitor response and escalate if needed"
+      '1. Assess symptom severity and duration',
+      '2. Consider non-pharmacological interventions',
+      '3. Try appropriate OTC medications if available',
+      '4. Monitor response and escalate if needed',
     ],
     professional_care_pathway: [
-      "1. Recognize symptoms requiring medical evaluation",
-      "2. Gather relevant clinical information",
-      "3. Seek appropriate level of care (primary/specialist)",
-      "4. Follow prescribed treatment regimen"
-    ]
+      '1. Recognize symptoms requiring medical evaluation',
+      '2. Gather relevant clinical information',
+      '3. Seek appropriate level of care (primary/specialist)',
+      '4. Follow prescribed treatment regimen',
+    ],
   };
 }
 
 function generateNavigationStrategy(
   discoveryData: any,
-  userInput: BrowseAvailableSymptomsInput
+  userInput: ValidatedBrowseAvailableSymptomsInput,
 ): Record<string, string[]> {
   return {
     efficient_navigation: [
-      "Use category filtering to narrow down to relevant medical areas",
-      "Check popular symptoms for commonly treated conditions",
-      "Apply clinical priority ordering for urgent conditions first"
+      'Use category filtering to narrow down to relevant medical areas',
+      'Check popular symptoms for commonly treated conditions',
+      'Apply clinical priority ordering for urgent conditions first',
     ],
     comprehensive_exploration: [
-      "Browse all categories to understand full scope of available treatments",
-      "Compare treatment availability across different symptom categories",
-      "Use cross-referencing with other tools for complete clinical picture"
+      'Browse all categories to understand full scope of available treatments',
+      'Compare treatment availability across different symptom categories',
+      'Use cross-referencing with other tools for complete clinical picture',
     ],
     clinical_decision_support: [
-      "Start with symptom discovery before searching specific medications",
-      "Use symptom-to-treatment pathway for evidence-based approach",
-      "Consider both immediate and long-term treatment strategies"
-    ]
+      'Start with symptom discovery before searching specific medications',
+      'Use symptom-to-treatment pathway for evidence-based approach',
+      'Consider both immediate and long-term treatment strategies',
+    ],
   };
 }
 
-function generateDiscoveryGuidance(categories: any[], userInput: BrowseAvailableSymptomsInput): string[] {
+function generateDiscoveryGuidance(
+  categories: any[],
+  userInput: ValidatedBrowseAvailableSymptomsInput,
+): string[] {
   const guidance: string[] = [];
-  
+
   guidance.push(`Healthcare system contains ${categories.length} major symptom categories`);
-  
+
   if (userInput.category_filter) {
-    const filtered = categories.filter((c: any) => 
-      c.bySymptomMain.toLowerCase().includes(userInput.category_filter!.toLowerCase())
+    const filtered = categories.filter((c: any) =>
+      c.bySymptomMain.toLowerCase().includes(userInput.category_filter!.toLowerCase()),
     );
     guidance.push(`Filter "${userInput.category_filter}" matches ${filtered.length} categories`);
   }
-  
+
   if (userInput.include_popular_symptoms) {
-    guidance.push("Popular symptoms included to prioritize commonly treated conditions");
+    guidance.push('Popular symptoms included to prioritize commonly treated conditions');
   }
-  
-  guidance.push("Use specific category-symptom combinations for targeted treatment discovery");
-  
+
+  if (userInput.clinical_priority_order) {
+    guidance.push('Clinical priority ordering applied for relevant conditions');
+  }
+
+  guidance.push('Use specific category-symptom combinations for targeted treatment discovery');
+
   return guidance;
 }
 
-function generateSymptomDiscoveryNotes(userInput: BrowseAvailableSymptomsInput): string[] {
+function generateSymptomDiscoveryNotes(userInput: ValidatedBrowseAvailableSymptomsInput): string[] {
   const notes: string[] = [];
-  
-  notes.push("Symptom discovery provides foundation for evidence-based treatment selection");
-  notes.push("Categories organized by medical specialty and clinical relevance");
-  
+
+  notes.push('Symptom discovery provides foundation for evidence-based treatment selection');
+  notes.push('Categories organized by medical specialty and clinical relevance');
+
   if (userInput.clinical_priority_order) {
-    notes.push("Clinical priority ordering applied - urgent conditions listed first");
+    notes.push('Clinical priority ordering applied - urgent conditions listed first');
   }
-  
-  notes.push("Each category contains multiple specific symptoms for targeted treatment");
-  notes.push("Use symptom navigation to access comprehensive treatment options");
-  
+
+  notes.push('Each category contains multiple specific symptoms for targeted treatment');
+  notes.push('Use symptom navigation to access comprehensive treatment options');
+
   return notes;
 }
 
 function enhanceSymptomDiscoveryNextActions(
   baseActions: any[],
   discoveryData: any,
-  userInput: BrowseAvailableSymptomsInput
+  userInput: ValidatedBrowseAvailableSymptomsInput,
 ): any[] {
   const enhancedActions = [...baseActions];
-  
+
   // Add discovery-specific actions
   enhancedActions.push({
-    tool: "find_drugs_for_symptom",
-    reason: "Find treatments for specific symptoms identified in discovery",
-    parameters_hint: "Use category and symptom names from discovery results"
+    tool: 'find_drugs_for_symptom',
+    reason: 'Find treatments for specific symptoms identified in discovery',
+    parameters_hint: 'Use category and symptom names from discovery results',
   });
-  
+
   if (userInput.include_popular_symptoms) {
     enhancedActions.push({
-      tool: "discover_popular_symptoms",
-      reason: "Get detailed popular symptoms analysis",
-      parameters_hint: "Analyze trending medical conditions and treatments"
+      tool: 'discover_popular_symptoms',
+      reason: 'Get detailed popular symptoms analysis',
+      parameters_hint: 'Analyze trending medical conditions and treatments',
     });
   }
-  
+
   enhancedActions.push({
-    tool: "explore_therapeutic_categories",
-    reason: "Cross-reference with medication classification system",
-    parameters_hint: "Connect symptoms with therapeutic drug categories"
+    tool: 'explore_therapeutic_categories',
+    reason: 'Cross-reference with medication classification system',
+    parameters_hint: 'Connect symptoms with therapeutic drug categories',
   });
-  
+
   return enhancedActions;
 }
