@@ -91,7 +91,7 @@ npx israel-drugs-mcp-server
 ### **Option 2: Development Setup**
 ```bash
 # Clone repository
-git clone https://github.com/DavidOsherProceed/israel-drugs-mcp-server.git
+git clone https://github.com/DavidOsherDevDev/israel-drugs-mcp-server.git
 cd israel-drugs-mcp-server
 
 # Install dependencies
@@ -472,7 +472,7 @@ We welcome contributions to improve Israeli healthcare AI!
 
 1. **🍴 Fork the Repository**
    ```bash
-   git fork https://github.com/DavidOsherProceed/israel-drugs-mcp-server.git
+   git fork https://github.com/DavidOsherDevDev/israel-drugs-mcp-server.git
    ```
 
 2. **🌿 Create Feature Branch**
@@ -551,3 +551,4 @@ For commercial use or enterprise deployment, please contact via LinkedIn or GitH
 
 **⚡ Ready to get started?**
 **[Get Started Now](#-installation) | [View on GitHub](https://github.com/DavidOsherDevDev/israel-drugs-mcp-server)**
+
