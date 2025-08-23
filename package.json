@@ -5,14 +5,15 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "israel-drugs-mcp": "dist/index.js"
+    "israel-drugs-mcp-server": "dist/index.js"
   },
   "scripts": {
     "build": "tsc && chmod +x dist/index.js",
     "watch": "tsc --watch",
     "dev": "npm run build && node dist/index.js",
     "start": "node dist/index.js",
-    "test": "echo \"Tests will be added later\" && exit 0"
+    "test": "echo \"Tests will be added later\" && exit 0",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
@@ -22,10 +23,27 @@
     "medicine",
     "healthcare",
     "api",
-    "ai-assistant"
+    "ai-assistant",
+    "claude",
+    "anthropic",
+    "pharmaceutical"
   ],
-  "author": "Your Name",
-  "license": "MIT",
+  "author": "David Osher <your-email@example.com> (https://linkedin.com/in/davidosher)",
+  "license": "CC-BY-NC-SA-4.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DavidOsherDevDev/israel-drugs-mcp-server.git"
+  },
+  "homepage": "https://github.com/DavidOsherDevDev/israel-drugs-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/DavidOsherDevDev/israel-drugs-mcp-server/issues"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
     "node-fetch": "^3.3.2",
@@ -43,5 +61,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
