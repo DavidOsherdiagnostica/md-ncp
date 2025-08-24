@@ -102,11 +102,10 @@ Add to your Claude Desktop settings (`~/.claude.json` or `%APPDATA%\Claude\claud
 {
   "mcpServers": {
     "israel-drugs": {
-      "command": "npx",
-      "args": ["israel-drugs-mcp-server"],
+      "command": "node",
+      "args": ["/path/to/israel-drugs-mcp-server/dist/index.js"],
       "env": {},
-      "disabled": false,
-      "autoApprove": []
+      "disabled": false
     }
   }
 }
@@ -542,5 +541,6 @@ For commercial use or enterprise deployment, please contact via LinkedIn or GitH
 
 **⚡ Ready to get started?**
 **[Get Started Now](#-installation) | [View on GitHub](https://github.com/DavidOsherDevDev/israel-drugs-mcp-server)**
+
 
 
