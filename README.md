@@ -79,16 +79,7 @@ Unlike basic MCP servers, this includes **3 professional-grade prompt templates*
 - Claude Desktop app or MCP-compatible client
 - Internet connection for real-time data access
 
-### **Option 1: Quick Install (Recommended)**
-```bash
-# Install globally
-npm install -g israel-drugs-mcp-server
-
-# Or use with npx (no installation needed)
-npx israel-drugs-mcp-server
-```
-
-### **Option 2: Development Setup**
+### **Development Setup**
 ```bash
 # Clone repository
 git clone https://github.com/DavidOsherDevDev/israel-drugs-mcp-server.git
@@ -551,4 +542,5 @@ For commercial use or enterprise deployment, please contact via LinkedIn or GitH
 
 **⚡ Ready to get started?**
 **[Get Started Now](#-installation) | [View on GitHub](https://github.com/DavidOsherDevDev/israel-drugs-mcp-server)**
+
 
