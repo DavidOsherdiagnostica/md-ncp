@@ -484,6 +484,7 @@ export interface ProcessedDrug {
     description: string;
     price: number;
     quantity: string;
+    requiresPrescription?: boolean; // Added for detailed package info
   }>;
   clinicalInfo: {
     indications: string;

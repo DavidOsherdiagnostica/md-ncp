@@ -69,7 +69,7 @@ export function formatDetailedDrugInfo(drugDetails: GetSpecificDrugResponse): Pr
     ),
     dosageForm: drugDetails.dosageForm,
     administrationRoute: drugDetails.usageFormHeb,
-    requiresPrescription: drugDetails.isPrescription,
+    requiresPrescription: drugDetails.packages.some(pkg => !pkg.isPrescription),
     inHealthBasket: drugDetails.health,
     isActive: !drugDetails.iscanceled,
     discontinuedDate: drugDetails.iscanceled ? formatDate(drugDetails.bitulDate) : null,
@@ -85,6 +85,7 @@ export function formatDetailedDrugInfo(drugDetails: GetSpecificDrugResponse): Pr
       description: pkg.packageDesc,
       price: pkg.packageMaxPrice,
       quantity: pkg.quantity,
+      requiresPrescription: !pkg.isPrescription,
     })),
     clinicalInfo: {
       indications: drugDetails.dragIndication || 'No indication information available',
