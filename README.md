@@ -18,12 +18,12 @@ The first MCP server to bridge Israel's healthcare data with AI, enabling Claude
 - **Clinical Intelligence**: Advanced therapeutic comparison and safety assessment
 - **Israeli Context**: Tailored for Israel's healthcare system, regulations, and population
 
-### **Revolutionary Pre-Built Clinical Prompts** 🧠
-Unlike basic MCP servers, this includes **3 professional-grade prompt templates** that transform AI into a clinical decision support system:
+### **Revolutionary Pre-Built Clinical Information Templates** 🧠
+Unlike basic MCP servers, this includes **3 professional-grade information templates** that help organize pharmaceutical data from the Ministry of Health:
 
-1. **🔬 `compare_therapeutic_options`** - Comprehensive medication comparison with weighted scoring matrices
-2. **⚠️ `drug_safety_verification`** - Complete safety assessment with risk stratification 
-3. **🏥 `symptom_to_treatment_workflow`** - Evidence-based symptom-to-treatment pathways
+1. **🔬 `compare_therapeutic_options`** - Structured medication comparison using official data
+2. **⚠️ `drug_safety_verification`** - Organized safety information from regulatory sources  
+3. **🏥 `symptom_to_treatment_workflow`** - Information discovery based on medical categories
 
 ---
 
@@ -44,10 +44,10 @@ Unlike basic MCP servers, this includes **3 professional-grade prompt templates*
 - Safety and interaction screening
 
 ### **🧠 Clinical Intelligence Features**
-- **Automated comparison reports** with professional-grade analysis
-- **Risk assessment frameworks** for patient safety
-- **Treatment pathway optimization** for Israeli healthcare system
-- **Evidence-based recommendations** with clinical rationale
+- **Data organization templates** with structured information presentation
+- **Information discovery frameworks** for pharmaceutical research
+- **Educational content optimization** for Israeli healthcare context
+- **Research-based information** with clinical context
 
 ### **🇮🇱 Israeli Healthcare Integration**
 - Ministry of Health approval status
@@ -79,16 +79,7 @@ Unlike basic MCP servers, this includes **3 professional-grade prompt templates*
 - Claude Desktop app or MCP-compatible client
 - Internet connection for real-time data access
 
-### **Option 1: Quick Install (Recommended)**
-```bash
-# Install globally
-npm install -g israel-drugs-mcp-server
-
-# Or use with npx (no installation needed)
-npx israel-drugs-mcp-server
-```
-
-### **Option 2: Development Setup**
+### **Development Setup**
 ```bash
 # Clone repository
 git clone https://github.com/DavidOsherDevDev/israel-drugs-mcp-server.git
@@ -111,8 +102,8 @@ Add to your Claude Desktop settings (`~/.claude.json` or `%APPDATA%\Claude\claud
 {
   "mcpServers": {
     "israel-drugs": {
-      "command": "npx",
-      "args": ["israel-drugs-mcp-server"],
+      "command": "node",
+      "args": ["/path/to/israel-drugs-mcp-server/dist/index.js"],
       "env": {},
       "disabled": false,
       "autoApprove": []
@@ -248,81 +239,81 @@ discover_drug_by_name({
 
 ---
 
-## 🧠 Clinical Prompts (The Secret Weapon)
+## 🧠 Information Templates (Educational & Research Use)
 
 ### **🔬 `compare_therapeutic_options`**
-**The Professional Drug Comparison Engine**
+**Educational Drug Information Comparison**
 
-Transform Claude into a clinical pharmacologist with this comprehensive comparison framework.
+Organize pharmaceutical data from the Ministry of Health for educational comparison purposes.
 
 **Input Parameters**:
 - `drug_list` (required): Comma-separated medications
-- `clinical_context`: Indication or medical condition
-- `target_population`: Patient demographic (e.g., "elderly", "pediatric")
-- `comparison_focus`: Primary analysis area (safety, efficacy, cost)
-- `decision_framework`: Decision-making approach
+- `clinical_context`: Medical indication for information context
+- `target_population`: Patient demographic for educational purposes
+- `comparison_focus`: Primary information area (safety data, regulatory status, etc.)
+- `decision_framework`: Information organization approach
 
-**What It Generates**:
-- **Weighted Scoring Matrix**: Professional-grade comparison with numerical scores
-- **Clinical Efficacy Analysis**: Evidence-based effectiveness evaluation
-- **Safety Profile Comparison**: Comprehensive adverse event assessment
-- **Economic Impact Analysis**: Israeli healthcare cost considerations
-- **Implementation Strategy**: Phase-by-phase rollout plan
-- **Evidence-Based Recommendations**: Clinical decision support
+**What It Provides**:
+- **Structured Information Matrix**: Organized pharmaceutical data comparison
+- **Regulatory Information**: Ministry of Health approval and status data
+- **Educational Safety Information**: Official safety profile data
+- **Health System Information**: Israeli healthcare system context
+- **Research Organization**: Structured information for educational use
+- **Information Summary**: Organized data presentation
 
 **Example Usage**:
 ```plaintext
-Use the therapeutic comparison prompt:
+Use the information comparison template:
 - drug_list: "Nurofen,Advil,Tylenol"
-- clinical_context: "pediatric pain management"  
+- clinical_context: "pediatric pain relief information"  
 - target_population: "children ages 3-5"
-- comparison_focus: "safety and efficacy"
+- comparison_focus: "safety information and regulatory status"
 ```
 
-**Output Sample**: Complete 15-page clinical analysis with decision matrices, implementation timelines, and evidence-based recommendations.
+**Output**: Organized educational information based on Ministry of Health data for research and learning purposes.
 
 ### **⚠️ `drug_safety_verification`**
-**Comprehensive Medication Safety Assessment**
+**Educational Safety Information Organization**
 
-Professional-grade safety evaluation system for medication review.
+Access and organize official safety information from regulatory sources for educational purposes.
 
 **Input Parameters**:
 - `drug_identifier` (required): Medication name or registration number
-- `patient_age_group`: Age category for population-specific assessment
-- `medical_conditions`: Relevant comorbidities
-- `current_medications`: Concurrent therapy for interaction screening
-- `allergies`: Known sensitivities
-- `safety_concerns`: Specific focus areas
-- `risk_tolerance`: Acceptable risk level
+- `patient_age_group`: Age category for population-specific information
+- `medical_conditions`: Relevant medical conditions for information context
+- `current_medications`: Concurrent medications for interaction information
+- `allergies`: Known sensitivities for contraindication information
+- `safety_concerns`: Specific information focus areas
+- `risk_tolerance`: Information detail level
 
-**What It Generates**:
-- **Regulatory Safety Status**: Current approval and alert history
-- **Clinical Safety Profile**: Complete adverse event analysis
-- **Patient-Specific Risk Assessment**: Individualized safety evaluation
-- **Drug Interaction Analysis**: Comprehensive interaction screening
-- **Monitoring Strategy**: Risk mitigation and surveillance protocols
-- **Emergency Management**: Response protocols for adverse events
+**What It Provides**:
+- **Regulatory Safety Information**: Current approval and regulatory status
+- **Official Safety Profile**: Ministry of Health safety data
+- **Educational Risk Information**: Population-specific safety information
+- **Interaction Information**: Official drug interaction data
+- **Monitoring Information**: Regulatory monitoring guidelines
+- **Educational Resources**: Safety information for learning purposes
 
 ### **🏥 `symptom_to_treatment_workflow`**
-**Evidence-Based Clinical Pathways**
+**Educational Information Discovery by Medical Categories**
 
-Transform symptom presentation into structured treatment protocols.
+Explore pharmaceutical information organized by medical categories and symptoms for educational purposes.
 
 **Input Parameters**:
-- `presenting_symptoms` (required): Symptom list
-- `patient_age`: Age or age group
-- `medical_history`: Relevant past medical history
-- `severity_assessment`: Symptom severity level
-- `treatment_goals`: Desired outcomes
-- `resource_constraints`: Budget or access limitations
+- `presenting_symptoms` (required): Symptom categories for information discovery
+- `patient_age`: Age group for population-specific information
+- `medical_history`: Medical conditions for information context
+- `severity_assessment`: Information detail level
+- `treatment_goals`: Educational information focus
+- `resource_constraints`: Information scope limitations
 
-**What It Generates**:
-- **Systematic Clinical Assessment**: Structured symptom characterization
-- **Differential Diagnosis**: Evidence-based diagnostic considerations
-- **Treatment Algorithm**: Step-by-step therapeutic approach
-- **Israeli Healthcare Integration**: System-specific implementation
-- **Monitoring Framework**: Outcome assessment and quality measures
-- **Patient Education Strategy**: Comprehensive care planning
+**What It Provides**:
+- **Systematic Information Organization**: Structured medical category information
+- **Educational Disease Information**: Condition-based information from official sources
+- **Information Discovery Pathways**: Organized pharmaceutical information flow
+- **Israeli Healthcare Information**: System-specific educational content
+- **Research Framework**: Information organization for educational use
+- **Learning Resources**: Educational material organization
 
 ---
 
@@ -437,23 +428,35 @@ ISRAELI HEALTH SYSTEM:
 
 ## 🛡 Safety and Disclaimers
 
-### **⚠️ Important Medical Disclaimers**
+### **⚠️ CRITICAL MEDICAL AND LEGAL DISCLAIMERS**
 
-**This MCP server is designed for informational and educational purposes only:**
+**This MCP server is designed EXCLUSIVELY for informational, educational, and research purposes:**
 
-- ❌ **NOT a substitute for professional medical advice**
+- ❌ **NOT for medical diagnosis, treatment, or clinical decision-making**
+- ❌ **NOT a substitute for professional medical advice, diagnosis, or treatment**
 - ❌ **NOT for emergency medical situations**
-- ❌ **NOT validated for clinical decision-making**
-- ✅ **Intended to support healthcare professionals**
-- ✅ **Designed for educational and research use**
+- ❌ **NOT validated or approved for clinical use**
+- ❌ **NOT intended to replace healthcare providers or medical consultations**
+- ✅ **ONLY for educational and research purposes**
+- ✅ **Information sourced from public Ministry of Health databases**
+- ✅ **Designed for learning about pharmaceutical information systems**
 
-### **🏥 Clinical Recommendations**
+### **🚨 IMPORTANT LEGAL NOTICES**
 
-1. **Always consult licensed healthcare providers** for medical decisions
-2. **Verify all information** with current Israeli prescribing guidelines
-3. **Consider individual patient factors** not captured in databases
-4. **Report adverse events** to Israeli Ministry of Health systems
-5. **Maintain professional liability insurance** when using in clinical contexts
+1. **Always consult licensed healthcare professionals** for any medical decisions
+2. **This system does not provide medical advice** - it only organizes publicly available information
+3. **All medical decisions must be made by qualified healthcare providers**
+4. **Verify all information** with current Israeli prescribing guidelines and healthcare providers
+5. **In case of medical emergency, contact emergency services immediately**
+6. **The creators assume no liability** for any medical decisions or actions taken based on this information
+
+### **📚 Educational and Research Use Only**
+
+1. **This system organizes publicly available information** from Israeli Ministry of Health databases
+2. **All information is for educational and research purposes only**
+3. **Users must verify all information** with healthcare professionals and official sources
+4. **No medical advice or recommendations are provided** - only information organization
+5. **Healthcare decisions must be made by qualified professionals** with appropriate medical training and licensing
 
 ### **📋 Data Accuracy**
 
@@ -550,5 +553,4 @@ For commercial use or enterprise deployment, please contact via LinkedIn or GitH
 ---
 
 **⚡ Ready to get started?**
-**[Get Started Now](#-installation) | [View on GitHub](https://github.com/DavidOsherDevDev/israel-drugs-mcp-server)**
-
+**[Clone Repository](https://github.com/DavidOsherDevDev/israel-drugs-mcp-server) | [View Installation Guide](#-installation)**
