@@ -1,11 +1,11 @@
 {
-  "name": "israel-drugs-mcp-server",
+  "name": "generic-mcp-server-template",
   "version": "1.0.0",
-  "description": "MCP Server for Israeli Ministry of Health Drugs Database - AI-optimized medical information assistant",
+  "description": "A generic template for a Model Context Protocol (MCP) server, providing a robust and extensible foundation for AI agent integrations.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "israel-drugs-mcp-server": "dist/index.js"
+    "generic-mcp-server-template": "dist/index.js"
   },
   "scripts": {
     "build": "tsc && node -e \"if (process.platform !== 'win32') require('fs').chmodSync('dist/index.js', 0o755)\"",
@@ -20,25 +20,21 @@
   "keywords": [
     "mcp",
     "model-context-protocol",
-    "israel",
-    "drugs",
-    "medicine",
-    "healthcare",
-    "api",
-    "ai-assistant",
+    "template",
+    "ai-agent",
     "claude",
     "anthropic",
-    "pharmaceutical"
+    "typescript"
   ],
   "author": "David Osher <your-email@example.com> (https://linkedin.com/in/davidosher)",
   "license": "CC-BY-NC-SA-4.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/DavidOsherDevDev/israel-drugs-mcp-server.git"
+    "url": "https://github.com/your-username/generic-mcp-server-template.git"
   },
-  "homepage": "https://github.com/DavidOsherDevDev/israel-drugs-mcp-server#readme",
+  "homepage": "https://github.com/your-username/generic-mcp-server-template#readme",
   "bugs": {
-    "url": "https://github.com/DavidOsherDevDev/israel-drugs-mcp-server/issues"
+    "url": "https://github.com/your-username/generic-mcp-server-template/issues"
   },
   "files": [
     "dist/**/*",

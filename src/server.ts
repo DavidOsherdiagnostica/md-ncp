@@ -5,41 +5,32 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
+import { MCP_SERVER_CONFIG } from "./config/appConfig.js";
 
-// Import all our tool and prompt registrations
-import { registerDrugComparisonPrompt } from "./prompts/drugComparison.js";
-import { registerSymptomGuidePrompt } from "./prompts/symptomGuide.js";
-import { registerSafetyCheckPrompt } from "./prompts/safetyCheck.js";
-import { registerTherapeuticCategoriesTool } from "./tools/discovery/categories.js";
-import { registerAdministrationRoutesTool } from "./tools/discovery/routes.js";
-import { registerSymptomDiscoveryTool } from "./tools/discovery/symptoms.js";
-import { registerDrugDetailsTool } from "./tools/info/drugDetails.js";
-import { registerDrugImageTool } from "./tools/info/drugImage.js";
-import { registerAutocompleteTool } from "./tools/search/autocomplete.js";
-import { registerSearchByNameTool } from "./tools/search/searchByName.js";
-import { registerSearchBySymptomTool } from "./tools/search/searchBySymptom.js";
-import { registerSearchGenericTool } from "./tools/search/searchGeneric.js";
+// Import our generic tool and prompt registrations
+import { registerTemplatePrompt } from "./prompts/templatePrompt.js";
+import { registerTemplateTool } from "./tools/templateTool.js";
+import { registerTemplateResource } from "./resources/templateResource.js";
 
 // Function to create and configure an MCP server instance
 function createServer() {
     const server = new McpServer({
-        name: "israel-drugs-mcp-server",
-        version: "1.0.0"
+        name: MCP_SERVER_CONFIG.SERVER_NAME,
+        version: MCP_SERVER_CONFIG.SERVER_VERSION
     });
 
-    // Register all prompts and tools
-    registerDrugComparisonPrompt(server);
-    registerSymptomGuidePrompt(server);
-    registerSafetyCheckPrompt(server);
-    registerTherapeuticCategoriesTool(server);
-    registerAdministrationRoutesTool(server);
-    registerSymptomDiscoveryTool(server);
-    registerDrugDetailsTool(server);
-    registerDrugImageTool(server);
-    registerAutocompleteTool(server);
-    registerSearchByNameTool(server);
-    registerSearchBySymptomTool(server);
-    registerSearchGenericTool(server);
+    // Register generic prompts, tools, and resources
+    registerTemplatePrompt(server);
+    registerTemplateTool(server);
+    registerTemplateResource(server); // Register the generic resource
+
+    // TODO: Add your specific tool and prompt registrations here
+    // import { registerYourCustomTool } from "./tools/yourCustomTool.js";
+    // registerYourCustomTool(server);
+
+    // TODO: Add your specific resource registrations here
+    // import { registerYourCustomResource } from "./resources/yourCustomResource.js";
+    // registerYourCustomResource(server);
 
     return server;
 }
@@ -75,8 +66,8 @@ export function setupHttpServer(port: number = 3000) {
                 onsessioninitialized: (sessionId) => {
                     transports[sessionId] = transport;
                 },
-                enableDnsRebindingProtection: true,
-                allowedHosts: ['127.0.0.1', 'localhost', 'localhost:3000']
+                // TODO: Configure allowedHosts appropriately for production or pull from config
+                allowedHosts: ['127.0.0.1', 'localhost', `localhost:${port}`]
             });
 
             // Clean up transport when closed

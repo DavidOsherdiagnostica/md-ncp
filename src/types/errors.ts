@@ -1,6 +1,6 @@
 /**
- * Error types for Israel Drugs MCP Server
- * Centralized error handling with clinical context
+ * Generic Error types for MCP Server
+ * Centralized error handling
  */
 
 export enum ErrorType {
@@ -10,18 +10,11 @@ export enum ErrorType {
   API_RATE_LIMIT = 'API_RATE_LIMIT',
   API_INVALID_RESPONSE = 'API_INVALID_RESPONSE',
   API_SERVER_ERROR = 'API_SERVER_ERROR',
+  API_BAD_REQUEST = 'API_BAD_REQUEST', // For client-side HTTP errors (e.g., 400, 404)
 
   // Data Validation Errors
   INVALID_INPUT = 'INVALID_INPUT',
   MISSING_REQUIRED_FIELD = 'MISSING_REQUIRED_FIELD',
-  INVALID_DRUG_REGISTRATION = 'INVALID_DRUG_REGISTRATION',
-  INVALID_SYMPTOM_CATEGORY = 'INVALID_SYMPTOM_CATEGORY',
-  INVALID_ATC_CODE = 'INVALID_ATC_CODE',
-
-  // Clinical Safety Errors
-  DRUG_DISCONTINUED = 'DRUG_DISCONTINUED',
-  PRESCRIPTION_REQUIRED = 'PRESCRIPTION_REQUIRED',
-  SAFETY_WARNING = 'SAFETY_WARNING',
 
   // Search Errors
   NO_RESULTS_FOUND = 'NO_RESULTS_FOUND',
@@ -38,7 +31,7 @@ export enum ErrorSeverity {
   LOW = 'low', // Minor issues, suggestions available
   MEDIUM = 'medium', // Important warnings, user action needed
   HIGH = 'high', // Critical errors, unsafe to proceed
-  CRITICAL = 'critical', // System failures, medical safety concerns
+  CRITICAL = 'critical', // System failures, critical impact
 }
 
 export interface McpError extends Error {
@@ -50,10 +43,9 @@ export interface McpError extends Error {
   readonly timestamp: Date;
   readonly correlationId: string | undefined;
   readonly suggestions: string[] | undefined;
-  readonly clinicalContext: string | undefined;
 }
 
-export class IsraelDrugsError extends Error implements McpError {
+export class GenericError extends Error implements McpError {
   public readonly type: ErrorType;
   public readonly severity: ErrorSeverity;
   public readonly code: string;
@@ -61,7 +53,6 @@ export class IsraelDrugsError extends Error implements McpError {
   public readonly timestamp: Date;
   public readonly correlationId: string | undefined;
   public readonly suggestions: string[] | undefined;
-  public readonly clinicalContext: string | undefined;
 
   constructor(
     type: ErrorType,
@@ -71,12 +62,11 @@ export class IsraelDrugsError extends Error implements McpError {
       details?: Record<string, unknown>;
       correlationId?: string;
       suggestions?: string[];
-      clinicalContext?: string;
       cause?: Error;
     } = {},
   ) {
     super(message);
-    this.name = 'IsraelDrugsError';
+    this.name = 'GenericError';
     this.type = type;
     this.severity = options.severity ?? ErrorSeverity.MEDIUM;
     this.code = type;
@@ -84,7 +74,6 @@ export class IsraelDrugsError extends Error implements McpError {
     this.timestamp = new Date();
     this.correlationId = options.correlationId ?? undefined;
     this.suggestions = options.suggestions ?? undefined;
-    this.clinicalContext = options.clinicalContext ?? undefined;
 
     if (options.cause) {
       this.cause = options.cause;
@@ -92,15 +81,15 @@ export class IsraelDrugsError extends Error implements McpError {
 
     // Maintain proper stack trace
     if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, IsraelDrugsError);
+      Error.captureStackTrace(this, GenericError);
     }
   }
 
   /**
-   * Creates a new IsraelDrugsError instance with updated properties.
+   * Creates a new GenericError instance with updated properties.
    * This is useful for modifying read-only properties like correlationId after initial creation.
    * @param updates An object containing the properties to update.
-   * @returns A new IsraelDrugsError instance with the merged properties.
+   * @returns A new GenericError instance with the merged properties.
    */
   public copyWith(updates: {
     type?: ErrorType;
@@ -109,20 +98,18 @@ export class IsraelDrugsError extends Error implements McpError {
     details?: Record<string, unknown>;
     correlationId?: string;
     suggestions?: string[];
-    clinicalContext?: string;
     cause?: Error;
-  }): IsraelDrugsError {
+  }): GenericError {
     const newDetails = updates.details ? { ...this.details, ...updates.details } : this.details;
 
-    return new IsraelDrugsError(
+    return new GenericError(
       updates.type ?? this.type,
       updates.message ?? this.message,
       {
         severity: updates.severity ?? this.severity,
-        ...(newDetails && { details: newDetails }), // Conditionally add details
+        ...(newDetails && { details: newDetails }),
         ...(updates.correlationId !== undefined ? { correlationId: updates.correlationId } : this.correlationId !== undefined ? { correlationId: this.correlationId } : {}),
         ...(updates.suggestions !== undefined ? { suggestions: updates.suggestions } : this.suggestions !== undefined ? { suggestions: this.suggestions } : {}),
-        ...(updates.clinicalContext !== undefined ? { clinicalContext: updates.clinicalContext } : this.clinicalContext !== undefined ? { clinicalContext: this.clinicalContext } : {}),
         cause: updates.cause ?? this.cause as Error,
       },
     );
@@ -139,7 +126,6 @@ export class IsraelDrugsError extends Error implements McpError {
       type: ErrorType;
       timestamp: string;
       suggestions?: string[];
-      clinical_context?: string;
       details?: Record<string, unknown>;
     };
   } {
@@ -151,7 +137,6 @@ export class IsraelDrugsError extends Error implements McpError {
         type: this.type,
         timestamp: this.timestamp.toISOString(),
         ...(this.suggestions && { suggestions: this.suggestions }),
-        ...(this.clinicalContext && { clinical_context: this.clinicalContext }),
         ...(this.details && { details: this.details }),
       },
     };
@@ -162,28 +147,14 @@ export class IsraelDrugsError extends Error implements McpError {
    */
   isRecoverable(): boolean {
     const recoverableTypes = [
+      ErrorType.API_CONNECTION_ERROR,
+      ErrorType.API_TIMEOUT,
+      ErrorType.API_RATE_LIMIT,
       ErrorType.NO_RESULTS_FOUND,
       ErrorType.AMBIGUOUS_QUERY,
       ErrorType.INVALID_INPUT,
-      ErrorType.API_TIMEOUT,
-      ErrorType.API_RATE_LIMIT,
     ];
 
     return recoverableTypes.includes(this.type);
-  }
-
-  /**
-   * Check if error represents a clinical safety concern
-   */
-  isClinicalSafetyConcern(): boolean {
-    return (
-      this.severity === ErrorSeverity.HIGH ||
-      this.severity === ErrorSeverity.CRITICAL ||
-      [
-        ErrorType.DRUG_DISCONTINUED,
-        ErrorType.SAFETY_WARNING,
-        ErrorType.PRESCRIPTION_REQUIRED,
-      ].includes(this.type)
-    );
   }
 }
