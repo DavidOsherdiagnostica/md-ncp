@@ -1,11 +1,11 @@
 {
-  "name": "generic-mcp-server-template",
+  "name": "md-mcp-server",
   "version": "1.0.0",
-  "description": "A generic template for a Model Context Protocol (MCP) server, providing a robust and extensible foundation for AI agent integrations.",
+  "description": "Medical Decision Model Context Protocol (MCP) server implementing clinical protocols for AI-assisted medical decision making.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "generic-mcp-server-template": "dist/index.js"
+    "md-mcp-server": "dist/index.js"
   },
   "scripts": {
     "build": "tsc && node -e \"if (process.platform !== 'win32') require('fs').chmodSync('dist/index.js', 0o755)\"",
@@ -20,7 +20,11 @@
   "keywords": [
     "mcp",
     "model-context-protocol",
-    "template",
+    "medical",
+    "clinical",
+    "healthcare",
+    "medication",
+    "protocols",
     "ai-agent",
     "claude",
     "anthropic",

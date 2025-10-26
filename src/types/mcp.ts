@@ -38,9 +38,9 @@ export interface McpSuccessResponse<T> {
   metadata: {
     total_results: number;
     query_time: string;
-    data_source: string; // Generic data source identifier
+    data_source: string; // Local processing data source
     last_updated: string;
-    api_version: string;
+    processing_version: string;
     // Add other generic metadata fields as needed
     [key: string]: unknown; // Allow additional metadata properties
   };

@@ -37,7 +37,7 @@ export function createMcpSuccessResponse<T>(
       query_time: `${queryTimeMs}ms`,
       data_source: APP_CONFIG.DEFAULT_DATA_SOURCE,
       last_updated: new Date().toISOString(),
-      api_version: APP_CONFIG.API_VERSION,
+      processing_version: APP_CONFIG.VERSION,
       ...metadata.additionalInfo,
     },
     clinical_notes: generateClinicalNotes(data),

@@ -6,7 +6,7 @@
 import { GenericError, ErrorType, ErrorSeverity } from '../types/errors.js';
 import { McpErrorResponse } from '../types/mcp.js';
 import { createMcpErrorResponse } from '../utils/formatters.js';
-import { ERROR_CONFIG, REQUEST_CONFIG } from '../config/appConfig.js';
+import { ERROR_CONFIG, PERFORMANCE_CONFIG } from '../config/appConfig.js';
 
 // ===== ERROR CLASSIFICATION =====
 
@@ -19,99 +19,32 @@ export function classifyError(error: unknown, context?: string): GenericError {
     return error;
   }
 
-  // Handle fetch/network errors (e.g., no internet, DNS failure)
-  if (error instanceof TypeError && error.message.includes('fetch')) {
-    return new GenericError(
-      ErrorType.API_CONNECTION_ERROR,
-      ERROR_CONFIG.DEFAULT_ERROR_MESSAGES.CONNECTION_ERROR,
-      {
-        severity: ErrorSeverity.HIGH,
-        suggestions: [
-          'Check your internet connection',
-          'Verify the external API service is accessible',
-          'Try again in a few moments',
-        ],
-        details: { originalError: String(error), context },
-      },
-    );
-  }
-
-  // Handle timeout errors
+  // Handle processing timeout errors
   if (error instanceof Error && error.name === 'TimeoutError') {
     return new GenericError(
-      ErrorType.API_TIMEOUT,
+      ErrorType.PROCESSING_TIMEOUT,
       ERROR_CONFIG.DEFAULT_ERROR_MESSAGES.TIMEOUT_ERROR,
       {
         severity: ErrorSeverity.MEDIUM,
         suggestions: [
-          'Retry the request',
-          'The external API service may be experiencing high load',
+          'Retry the processing',
+          'The system may be experiencing high load',
         ],
         details: { originalError: error.message, context },
       },
     );
   }
 
-  // Handle HTTP response errors
-  if (error instanceof Error && error.message.includes('HTTP')) {
-    const statusMatch = error.message.match(/HTTP (\d+)/);
-    const statusCode = statusMatch ? parseInt(statusMatch[1]!) : 0;
-
-    if (ERROR_CONFIG.RETRY_STATUS_CODES.includes(statusCode)) {
-      return new GenericError(
-        ErrorType.API_SERVER_ERROR, // Treat as server error for retryable HTTP issues
-        `External API server error (${statusCode})`,
-        {
-          severity: ErrorSeverity.HIGH,
-          suggestions: [
-            'Try again later',
-            'Contact system administrator if problem persists',
-          ],
-          details: { statusCode, context },
-        },
-      );
-    }
-
-    if (ERROR_CONFIG.PERMANENT_FAILURE_CODES.includes(statusCode)) {
-      return new GenericError(
-        ErrorType.API_BAD_REQUEST, // Treat as bad request for client errors
-        `External API returned an error (${statusCode})`,
-        {
-          severity: ErrorSeverity.MEDIUM,
-          suggestions: [
-            'Verify request parameters',
-            'Check API documentation',
-          ],
-          details: { statusCode, context },
-        },
-      );
-    }
-
+  // Handle general processing errors
+  if (error instanceof Error && error.message.includes('processing')) {
     return new GenericError(
-      ErrorType.API_INVALID_RESPONSE,
-      `Unexpected API response (${statusCode})`,
+      ErrorType.PROCESSING_ERROR,
+      'Error occurred during local processing',
       {
         severity: ErrorSeverity.MEDIUM,
         suggestions: [
-          'Verify request parameters',
-          'Check API documentation',
-          'Try a different approach',
-        ],
-        details: { statusCode, context },
-      },
-    );
-  }
-
-  // Handle JSON parsing errors
-  if (error instanceof SyntaxError && error.message.includes('JSON')) {
-    return new GenericError(
-      ErrorType.API_INVALID_RESPONSE,
-      ERROR_CONFIG.DEFAULT_ERROR_MESSAGES.INVALID_RESPONSE,
-      {
-        severity: ErrorSeverity.HIGH,
-        suggestions: [
-          'The external API returned invalid data',
-          'Report this issue if it persists',
+          'Retry the operation',
+          'Check input parameters',
         ],
         details: { originalError: error.message, context },
       },
@@ -197,7 +130,7 @@ export function createComprehensiveErrorResponse(
   const recoveryInfo = {
     is_recoverable: enhancedError.isRecoverable(), // Based on GenericError logic
     strategy: enhancedError.isRecoverable() ? 'retry' as const : 'abort' as const, // Explicitly cast to literal types
-    retry_delay_ms: enhancedError.isRecoverable() ? REQUEST_CONFIG.RETRY_DELAY_MS : 0, // Use config for generic retry delay
+    retry_delay_ms: enhancedError.isRecoverable() ? 1000 : 0, // Use default retry delay
   };
 
   // Add generic safety information (can be expanded by specific implementations)

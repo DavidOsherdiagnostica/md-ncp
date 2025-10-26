@@ -9,7 +9,6 @@ import type {
   McpSuccessResponse,
 } from '../types/mcp.js';
 import { createMcpSuccessResponse } from '../utils/formatters.js';
-import { APP_CONFIG } from '../config/appConfig.js';
 
 // ===== RESPONSE FORMATTER SERVICE =====
 
@@ -33,14 +32,14 @@ export class GenericResponseFormatterService {
     const genericMetadata = {
       total_results: Array.isArray(processedData) ? processedData.length : 1,
       query_time: `${queryTime}ms`,
-      data_source: APP_CONFIG.DEFAULT_DATA_SOURCE,
+      data_source: 'local_processing',
       last_updated: new Date().toISOString(),
-      api_version: APP_CONFIG.API_VERSION,
+      processing_version: '1.0.0',
       // Add other generic metadata fields as needed
     };
 
     const genericClinicalNotes = [
-      'Generic response generated for the tool.',
+      'Response generated through local processing.',
       'Review data carefully for relevance to your query.',
     ];
 

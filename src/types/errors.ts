@@ -4,14 +4,6 @@
  */
 
 export enum ErrorType {
-  // API Related Errors
-  API_CONNECTION_ERROR = 'API_CONNECTION_ERROR',
-  API_TIMEOUT = 'API_TIMEOUT',
-  API_RATE_LIMIT = 'API_RATE_LIMIT',
-  API_INVALID_RESPONSE = 'API_INVALID_RESPONSE',
-  API_SERVER_ERROR = 'API_SERVER_ERROR',
-  API_BAD_REQUEST = 'API_BAD_REQUEST', // For client-side HTTP errors (e.g., 400, 404)
-
   // Data Validation Errors
   INVALID_INPUT = 'INVALID_INPUT',
   MISSING_REQUIRED_FIELD = 'MISSING_REQUIRED_FIELD',
@@ -20,6 +12,10 @@ export enum ErrorType {
   NO_RESULTS_FOUND = 'NO_RESULTS_FOUND',
   TOO_MANY_RESULTS = 'TOO_MANY_RESULTS',
   AMBIGUOUS_QUERY = 'AMBIGUOUS_QUERY',
+
+  // Processing Errors
+  PROCESSING_ERROR = 'PROCESSING_ERROR',
+  PROCESSING_TIMEOUT = 'PROCESSING_TIMEOUT',
 
   // System Errors
   CACHE_ERROR = 'CACHE_ERROR',
@@ -147,12 +143,10 @@ export class GenericError extends Error implements McpError {
    */
   isRecoverable(): boolean {
     const recoverableTypes = [
-      ErrorType.API_CONNECTION_ERROR,
-      ErrorType.API_TIMEOUT,
-      ErrorType.API_RATE_LIMIT,
       ErrorType.NO_RESULTS_FOUND,
       ErrorType.AMBIGUOUS_QUERY,
       ErrorType.INVALID_INPUT,
+      ErrorType.PROCESSING_ERROR,
     ];
 
     return recoverableTypes.includes(this.type);
